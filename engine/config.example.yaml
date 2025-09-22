@@ -1,0 +1,35 @@
+sensitivity:
+  # Specialist parameters
+  patterns:
+    engulfing: 0.5
+    hammer: 0.3
+    breakout: 0.2
+  technicals:
+    mom_x: 0.6
+    mom20: 0.4
+    z_guard: -0.1  # negative means contrarian penalty at extremes
+  sequence:
+    window: 10
+
+risk:
+  min_adv_usd: 10000000   # 20D average dollar volume
+  max_atr_pct: 0.05       # ATR(14)/price cap
+  earnings_blackout: 2    # +/- days
+
+alert:
+  top_k: 1
+  news_provider: finnhub
+  news_lookback_days: 3
+  universe_file: engine/data/universe/nasdaq100.example.txt
+  discord_webhook: ${DISCORD_WEBHOOK_URL}
+
+calibration:
+  kind: platt
+  calibrators_pkl: data/models/spec_calibrators.pkl
+
+paths:
+  features: data/datasets/features_daily_1D.parquet
+  meta_model: data/models/meta_lr.pkl
+  oof: data/datasets/oof_specialists.parquet
+  news_sentiment: data/datasets/dummy_sentiment.parquet
+

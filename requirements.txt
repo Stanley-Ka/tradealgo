@@ -8,6 +8,10 @@ mlflow
 pydantic
 python-dotenv
 requests
+websocket-client
+pandas-market-calendars
+pyarrow
+tqdm
+pyyaml
 # Uncomment when implementing IBKR adapter
 # ib-insync
-
