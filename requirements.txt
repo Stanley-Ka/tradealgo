@@ -1,0 +1,13 @@
+pandas
+numpy
+scikit-learn
+xgboost
+statsmodels
+duckdb
+mlflow
+pydantic
+python-dotenv
+requests
+# Uncomment when implementing IBKR adapter
+# ib-insync
+
