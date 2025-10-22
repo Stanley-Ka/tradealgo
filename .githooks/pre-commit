@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-commit hook: scan staged files for secrets
+
+echo "[pre-commit] Scanning for secrets in staged files…"
+python -m engine.tools.scan_secrets --staged --fail-on-findings
+status=$?
+if [ $status -ne 0 ]; then
+  echo "[pre-commit] Secret scan failed. Stash/undo secrets or add to .gitignore."
+  exit $status
+fi
+exit 0

@@ -1,0 +1,209 @@
+Trading Engine – Operational Cheat Sheet
+=======================================
+
+Use this guide when you just want to run the engine without digging through the repo. Everything assumes you are in the project root with your virtual environment activated.
+
+0. Prerequisites (one-time)
+---------------------------
+- Install dependencies inside the venv: `python -m venv .venv && .\.venv\Scripts\activate && pip install -r requirements.txt`.
+- Create `scripts/api.env` with your keys (`POLYGON_API_KEY`, `DISCORD_ALERTS_WEBHOOK_URL`, `DISCORD_TRADES_WEBHOOK_URL`, `FINNHUB_API_KEY`). Scripts auto-load it.
+- Point heavy datasets at your storage drive via `engine/settings.toml`, for example `storage_root = "D:\\EngineData"`.
+- Copy any preset in `engine/presets/` to `*.local.yaml` when you need site-specific overrides; scripts prefer the `.local` automatically.
+
+1. Daily (Off-Market)
+---------------------
+Run these after the previous session closes. They keep data, models, and diagnostics current before the next open.
+
+1) Refresh datasets + features when stale (recommended)
+   - Yahoo example (adjust universe + provider as needed):
+     ```
+     python -m engine.data.build_dataset --provider yahoo --universe-file engine/data/universe/us_all.txt --start 2015-01-01
+     python -m engine.features.build_features --universe-file engine/data/universe/us_all.txt --start 2015-01-01 --out data/datasets/features_daily_1D.parquet
+     ```
+   - Optional: if you keep intraday snapshots, trigger the latest parquet: `python -m engine.tools.build_intraday_latest --config engine/config.intraday.example.yaml --out data/datasets/features_intraday_latest.parquet`.
+
+2) Quick readiness sweep (recommended)
+   - Command: `pwsh -NoLogo -File ./scripts/check-ready.ps1`
+   - Confirms the feature parquet date, meta model path, API keys, and webhooks. If features are older than ~3 trading days, repeat step 1.
+
+3) Backtest the freshly trained predictions (recommended)
+   - Command:
+     ```
+     python -m engine.backtest.simple_daily --features D:\\EngineData\\datasets\\features_daily_1D.parquet --pred D:\\EngineData\\datasets\\meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 --rebalance weekly --rebal-weekday MON --decision-log-csv D:\\EngineData\\backtests\\decision_log.csv --trade-learning-csv D:\\EngineData\\backtests\\trade_learning.csv --report-html D:\\EngineData\\backtests\\daily_topk_report.html
+     ```
+   - Inspect `data/backtests/daily_topk_report.html` (or the report path you set) for drawdown/turnover sanity.
+
+4) Auto-train calibrator and specialist weights (recommended once logs are >200 rows)
+   - Command: `python -m engine.tools.auto_train_from_log --entry-log data/paper/decision_log.csv --log D:\\EngineData\\backtests\\decision_log.csv --min-rows 200 --lookahead-col ret_3d --dedupe --calibrator-out data/models/meta_calibrator.auto.pkl --weights-out data/models/specialist_condition_weights.json`
+   - If you only want backtest data, add `--skip-entry-log`; add more `--log PATH` arguments for replay sets.
+
+5) Run the lightweight online upgrade (optional)
+   - Command: `./scripts/daily-train.ps1 -DecisionLog data/paper/decision_log.csv -Features data/datasets/features_daily_1D.parquet -Config engine/presets/swing_aggressive.yaml`
+   - Lower `-CalibratorMinRows`/`-MetaMinRows` if you are still bootstrapping and have <200 rows.
+
+6) Regenerate watchlists (optional but useful if real-time alerts depend on them)
+   - Command: `./scripts/daily-build.ps1 -Config engine/presets/swing_aggressive.local.yaml -TopK 500 -Out engine/data/universe/swing_aggressive.watchlist.txt`
+   - For a compact shortlist that Discord alerts will use on startup: `./scripts/daily-build.ps1 -Config engine/presets/swing_aggressive.local.yaml -TopK 50 -Out engine/data/universe/daily_watchlist.txt`.
+
+7) Aggregate replays / run smoke tests (optional)
+   - Replays: `python -m engine.tools.aggregate_replays --root data/backtests/replays --out-csv data/backtests/replays_aggregate.csv --print-summary`
+   - Tests: `pytest`, `python -m engine.tools.verify_risk --config engine/presets/swing_aggressive.local.yaml`, `python -m engine.tools.test_alert_parity --config engine/presets/swing_aggressive.local.yaml`.
+
+2. Daily (Trade)
+----------------
+These steps cover pre-open prep, live monitoring, and post-close tasks on trading days.
+
+1) Pre-open prep (recommended)
+   - Run the shortlist + sentiment updater: `./scripts/pre-market.ps1 -Config engine/config.research.yaml`
+   - Optional flags worth knowing:
+     * `-TopK 5` to limit the shortlist.
+     * `-IntradayFeatures data/datasets/features_intraday_latest.parquet -MixIntraday 0.3` to blend intraday factors.
+     * `-IntradayAlpha 0.15`, `-SectorMapCsv engine/data/sector_map.csv -SectorBoost 0.1`, `-BuildEarnings -EarningsFile data/events/earnings.parquet` for extra filters.
+   - If you keep intraday snapshots, confirm they’re updating: check the timestamp of `data/datasets/features_intraday_latest.parquet` (`Get-Item` or `python -m engine.tools.build_intraday_latest ...`).
+
+2) Launch real-time stack (recommended when you want unattended alerts/entries)
+   - Suggested command:
+     ```
+./scripts/overnight.ps1 -Config engine/presets/swing_aggressive.yaml -Universe engine/data/universe/watchlist.txt -Features D:\EngineData\datasets\features_daily_1D.parquet -Model D:\EngineData\models\meta_hgb.pkl -AlertEvery 5 -AlertPoll 15 -EntryTimes "15:55" -EntryTopK 5 -EntryPoll 5 -StartIntraday -IntradayFeatures data/datasets/features_intraday_latest.parquet -MixIntraday -MixWeight 0.3 -InitialWatchlistThreshold 0.55 -StartManager -MinAdvUsd 10000000
+     ```
+   - Adjust `-SignalThreshold` as desired; include `-AutoTrain` if you want the online helper to run once at startup.
+
+3) Monitor during the session
+   - Check worker status: `./scripts/status.ps1` (alerts/entry PIDs).
+   - Tail logs for detail: `Get-Content data/logs/rt-alert.out -Tail 50`, `Get-Content data/logs/rt-alert.err -Tail 50`, `Get-Content data/logs/entry-sched.out -Tail 50`.
+   - Inspect alert diagnostics: `data/alerts/alert_diag.csv`, and the alert log at `data/alerts/recommendations.csv`.
+   - Ad-hoc probability check: `./scripts/symbol-scan.ps1 -Symbols "AAPL,MSFT"` or run `python -m engine.tools.trade_alert --dry-run ...` for a one-off.
+   - If you need to stop anything: `./scripts/stop-rt-alert.ps1`, `./scripts/stop-entry.ps1`, `./scripts/stop-rt-manager.ps1` (if you have it running).
+
+4) Post-close wrap-up (recommended)
+   - Run the daily paper trader + online update: `./scripts/daily-run.ps1 -Config engine/config.research.yaml`
+   - Confirm the decision/entry logs grew (`data/paper/decision_log.csv`, `data/paper/entry_log.csv`).
+   - Optional recap: `./scripts/daily-summary.ps1` or `python -m engine.tools.daily_summary --decision-log data/paper/decision_log.csv`.
+
+5) Automation hooks (optional)
+   - Use Task Scheduler or the bundled runner: `./scripts/run-at-times.ps1 -Events @('08:45 | ./scripts/pre-market.ps1 -Config engine/config.research.yaml','16:10 | ./scripts/daily-run.ps1 -Config engine/config.research.yaml')`
+   - YAML schedule example:
+     ```
+     repeatDaily: true
+     events:
+       - time: "08:45"
+         days: [MON, TUE, WED, THU, FRI]
+         cmd: ./scripts/pre-market.ps1 -Config engine/config.research.yaml
+       - time: "16:10"
+         days: [MON, TUE, WED, THU, FRI]
+         cmd: ./scripts/daily-run.ps1 -Config engine/config.research.yaml
+     ```
+     Run with `./scripts/run-at-times.ps1 -ScheduleFile schedule.yaml`.
+
+3. Weekend (Deep Maintenance)
+-----------------------------
+Longer jobs meant for a weekly cadence; kick them off when you can let the machine run.
+
+1) Refresh the tradable universe (recommended)
+   - Command: `./scripts/update-universe.ps1 -Out engine/data/universe/us_all.txt -Types CS -Exchanges XNAS,XNYS,ARCX`
+   - Follow with any custom filtering (e.g., rebuild your swing watchlist).
+
+2) Full weekly retrain + model refresh (recommended)
+   - Command: `./scripts/weekly-train.ps1`
+   - Produces new OOF predictions, calibrators, meta model, backtest report, and writes resolved paths into `engine/presets/swing_aggressive.local.yaml` when run with `-WritePaths`.
+   - After completion, rerun `pwsh -NoLogo -File ./scripts/check-ready.ps1` to confirm the new artefact timestamps.
+
+3) Standalone backtest sanity (optional)
+   - Command: `./scripts/backtest.ps1`
+   - Handy if you tweak parameters and just need the HTML report + CSV.
+
+4) Weekly overview + weights (recommended)
+   - Command: `./scripts/weekly-overview.ps1 -DecisionLog data/paper/decision_log.csv -OutMD data/reports/weekly_overview.md -WeightsOut data/paper/specialist_weights.yaml -Weeks 1`
+   - Generates a recap and refreshes specialist condition weights used by the paper trader.
+
+5) Expectation / risk tuning (optional)
+   - Review suggested risk coefficients: `./scripts/update-expectation.ps1 -DryRun`
+   - Apply changes: `./scripts/update-expectation.ps1`
+   - Advanced YAML updater: `python -m engine.tools.update_expectation_from_logs --config engine/config.research.yaml --features data/datasets/features_daily_1D.parquet --decisions data/paper/entry_log.csv --base-prob 0.5 --lookahead 5`
+
+6) End-to-end automation rehearsal (optional)
+   - Command:
+     ```
+     ./scripts/full-automation.ps1 -DataProvider polygon -Universe engine/data/universe/us_all.txt -Features D:\\EngineData\\datasets\\features_daily_polygon.parquet -OOF D:\\EngineData\\datasets\\oof_specialists.parquet -Calibrators D:\\EngineData\\models\\spec_calibrators.pkl -Model D:\\EngineData\\models\\meta_hgb.pkl -MaxPerMinute 0 -RunTraining
+     ```
+   - Useful for sanity checking that every module can run unattended with your presets.
+
+7) Optional model diagnostics
+   - Meta calibrator audit: `python -m engine.models.online_update --decision-log data/paper/decision_log.csv --out-calibrator data/models/meta_calibrator.pkl --kind platt`
+   - Meta learner refit: `python -m engine.models.online_meta_refit --decision-log data/paper/decision_log.csv --out-model data/models/meta_online.pkl --label-threshold 0.0`
+  - Replay aggregation (if you skipped it mid-week): `python -m engine.tools.aggregate_replays --root data/backtests/replays --out-csv data/backtests/replays_aggregate.csv --print-summary`
+
+8) Build swing training dataset (for NN training later)
+   - Command:
+     `python -m engine.tools.build_swing_dataset --features D:\\EngineData\\datasets\\features_daily_1D.parquet --model-pkl D:\\EngineData\\models\\meta_hgb.pkl --universe-file engine/data/universe/swing_aggressive.watchlist.txt --timeframes 3,7,14 --entry-price close --top-k 20 --start 2017-01-01 --out D:\\EngineData\\datasets\\swing_training_dataset.parquet --resume --require-all-horizons`
+   - Produces rows with meta/specialist probabilities, ADV/ATR context, and labels ret_/label_up_3d/7d/14d for supervised learning.
+
+
+3. Overnight Trading
+--------------------
+This engine supports overnight-oriented selection and two common execution styles:
+pick before the open and enter at the open, or pick before the close and enter at the close (then carry overnight).
+
+- Configure the overnight specialist tilt (optional)
+  - In your preset YAML, you can bias the short-horizon sequence specialist to overnight moves:
+    specialists:
+      sequence:
+        enabled: true
+        window: 10
+        ret_kind: overnight   # close | intraday | overnight
+  - Baseline features already include `ret_overnight` per symbol, so the sequence signal will use it when present.
+
+- Pre-open picks and alert (enter at open)
+  - Generate a watchlist and news sentiment, then alert top candidates before the bell:
+    python -m engine.tools.daily_pipeline --config engine/config.example.yaml --date YYYY-MM-DD --skip-sentiment   # if sentiment already built
+    python -m engine.tools.trade_alert --config engine/config.example.yaml --top-k 5 --price-source live --entry-price open --date YYYY-MM-DD
+  - Notes:
+    - `--price-source live` avoids split-adjusted sizing issues if features are a few days old.
+    - Add `--intraday-features data/datasets/features_intraday_latest.parquet --mix-intraday 0.3` to blend a fresher snapshot if you maintain it.
+
+- Into-the-close entries (carry overnight)
+  - Let the scheduler trigger the entry loop automatically, sized using daily features but executed just before the close:
+    python -m engine.tools.entry_scheduler \
+      --config engine/presets/swing_aggressive.local.yaml \
+      --features D:\\EngineData\\datasets\\features_daily_1D.parquet \
+      --model-pkl data/models/meta_lr.pkl \
+      --universe-file engine/data/universe/swing_aggressive.watchlist.txt \
+      --times 15:55 \
+      --top-k 5 --entry-price close --send-discord
+  - To also catch opening entries, include `--times 09:35,15:55` and set `--entry-price open` when you want open fills.
+
+- Paper-trading daily carry (evaluation)
+  - To evaluate overnight carry with top‑K equal‑weight portfolio steps:
+    python -m engine.tools.paper_trader --features D:\\EngineData\\datasets\\features_daily_1D.parquet \
+      --universe-file engine/data/universe/swing_aggressive.watchlist.txt \
+      --model-pkl data/models/meta_lr.pkl --top-k 20 --cost-bps 5 --turnover-cap 0.5
+
+- Risk and gating quick reference
+  - Liquidity: `risk.min_adv_usd` (default 1e7) — requires `adj_volume*adj_close` history.
+  - Volatility: `risk.max_atr_pct` (default 0.05). `atr_missing_ok` can be set in YAML under `risk` to treat missing ATR as pass.
+  - Earnings blackout: `risk.earnings_blackout` days and `--earnings-file` in tools that support it.
+
+Overnight-specific improvements in this version
+----------------------------------------------
+- Fixed a cross‑symbol shift bug in the gap mean‑reversion specialist that could produce incorrect gaps when scoring a single date with many symbols. The specialist now:
+  - Uses `ret_overnight` from the feature parquet when available.
+  - Falls back to per‑symbol previous close (groupby‑shift) otherwise.
+- The sequence and breakout specialists now compute rolling/shifted values per symbol, preventing leakage across symbols and making multi‑symbol, multi‑date panels behave correctly.
+
+Troubleshooting overnight signals
+---------------------------------
+- Symptom: overnight scores are all near zero on a single trading day.
+  - Cause: sequence/breakout require history windows; a one‑day slice per symbol will emit neutral scores by design.
+  - Fix: this is expected during live selection; the gap mean‑reversion + technicals carry most weight intraday. For training/backtests, always compute on full history.
+- Symptom: inconsistent sizing vs broker at the open.
+  - Use `--price-source live` (and `--live-provider yahoo` or `polygon`) in `trade_alert`/`daily_pipeline` so sizing reflects unadjusted real‑time prices.
+
+
+Swing‑Only Focus
+----------------
+- The engine presets are now swing‑only. Intraday style presets (e.g., intraday_scalp, intraday_conservative) were removed to streamline training and operations for multi‑day swing holds.
+- Use `--style swing_aggressive` or `--style swing_conservative` with tools that accept `--style`. For custom setups, point `--config` to your YAML.
+- For future swing NN training: export a swing dataset with labels and specialist/meta features, then train your NN and plug it back either as a specialist (spec_lstm) or as the meta model.
+  - Generate OOF + calibrators: `python -m engine.models.run_cv --features ... --label label_up_1d --calibration platt --out data/datasets/oof_specialists.parquet --calibrators-out data/models/spec_calibrators.pkl`
+  - Build a training table from OOF (include *_prob, y_true, and optional regime features). Optionally join per‑trade scenarios from paper logs.
+  - Train your NN; save a pickle with `{ "model": <sklearn‑compatible>, "features": [<used columns>] }` and reference it as the meta model in YAML (paths.meta_model) or via `--model-pkl`.

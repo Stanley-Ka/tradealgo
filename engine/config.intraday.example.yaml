@@ -1,0 +1,32 @@
+bars:
+  root: data/equities/polygon
+  interval: 1m
+  lookback_bars: 200
+
+paths:
+  intraday_features: data/datasets/features_intraday_latest.parquet
+  meta_model: data/models/meta_lr.pkl
+  calibrators_pkl: data/models/spec_calibrators.pkl
+  # oof: data/datasets/oof_specialists.parquet
+
+entry:
+  universe_file: engine/data/universe/nasdaq100.example.txt
+  top_k: 5
+  entry_threshold: 0.50
+  confirmations: 2
+  sector_map_csv: data/mappings/symbol_sector.example.csv
+  sector_cap: 1
+  price_source: live
+  live_provider: yahoo
+  positions_csv: data/paper/positions.csv
+
+risk:
+  account_equity: 20000
+  risk_mode: auto
+  min_risk_pct: 0.0035
+  max_risk_pct: 0.0070
+  risk_curve: sqrt
+  base_prob: 0.52
+  stop_atr_mult: 1.0
+  max_name_weight: 0.10
+  # max_position_notional: 2000

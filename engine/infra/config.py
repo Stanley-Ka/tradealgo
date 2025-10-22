@@ -54,4 +54,3 @@ class Settings:
             alpha=float(sizing.get("alpha", 1.0)),
             w_max=float(sizing.get("w_max", 0.10)),
         )
-

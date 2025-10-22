@@ -10,4 +10,3 @@ def size_from_probability(p: float, alpha: float = 1.0, w_max: float = 0.10) -> 
     """
     x = alpha * (float(p) - 0.5)
     return max(-w_max, min(w_max, x))
-

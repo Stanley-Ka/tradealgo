@@ -1,244 +1,79 @@
-ENGINE CAPABILITIES AND COMMANDS
-================================
+ENGINE CAPABILITIES (Concise)
+=============================
 
 Overview
 --------
-Scaffolded US equities research and execution engine with stubs for data, features,
-models, portfolio, and broker adapters. Includes a working Finnhub WebSocket streamer
-for real-time trades and optional OHLCV aggregation.
+Daily US‑equities research engine: build features, calibrate specialists, train meta, backtest, alert to Discord, paper trade. Optional intraday scaffold and Streamlit UI.
 
-
-Project Settings (engine/settings.toml)
---------------------------------------
-[project]
-- name: Project identifier (default: "trading-engine")
-- mode: Runtime mode: dev | backtest | paper | live (default: dev)
-- timezone: IANA timezone for scheduling/printing (default: US/Eastern)
-
-[data]
-- storage_root: Local data directory for parquet/cache (default: data)
-- universe: Symbol universe key (e.g., sp500) or custom later (default: sp500)
-- bar_size: Research bar size hint: 1D | 240min | 60min (default: 1D)
-
-[brokers]
-- default: Broker adapter key: ibkr | tradier (default: ibkr)
-
-[risk]
-- max_name_weight: Max single-name portfolio weight (default: 0.10)
-- max_gross: Max gross exposure (long + short) (default: 1.00)
-- max_net: Max net exposure (|long - short|) (default: 0.50)
-- sector_max: Max sector concentration (default: 0.30)
-
-[sizing]
-- alpha: Aggressiveness/scaling for position sizing (default: 1.0)
-- w_max: Per-position cap (default: 0.10)
-
-Settings Loader
+Data & Features
 ---------------
-Code: engine/infra/config.py -> Settings.load() reads settings.toml and exposes:
-- project_name, mode, timezone
-- storage_root, universe, bar_size
-- broker_default
-- max_name_weight, max_gross, max_net, sector_max
-- alpha, w_max
+- Build dataset: `python -m engine.data.build_dataset --provider yahoo --universe-file engine/data/universe/nasdaq100.example.txt --start 2015-01-01`
+- Build features: `python -m engine.features.build_features --universe-file engine/data/universe/nasdaq100.example.txt --start 2015-01-01 --out data/datasets/features_daily_1D.parquet`
 
+Modeling
+--------
+- CV + calibrate: `python -m engine.models.run_cv --features data/datasets/features_daily_1D.parquet --label label_up_1d --calibration platt --out data/datasets/oof_specialists.parquet --calibrators-out data/models/spec_calibrators.pkl`
+- Train meta: `python -m engine.models.train_meta --oof data/datasets/oof_specialists.parquet --train-folds all-but-last:1 --test-folds last:1 --out data/datasets/meta_predictions.parquet --model-out data/models/meta_lr.pkl`
 
-Runtime Entry Points
---------------------
-Backtest stub:
-  python -m engine.main_backtest
+Backtesting
+-----------
+- Top‑K: `python -m engine.backtest.simple_daily --features data/datasets/features_daily_1D.parquet --pred data/datasets/meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 --report-html data/backtests/daily_topk_report.html`
 
-Live/paper stub:
-  python -m engine.main_live
+Trade Alerts (Discord)
+----------------------
+- One‑off: `python -m engine.tools.trade_alert --features data/datasets/features_daily_1D.parquet --model-pkl data/models/meta_lr.pkl --universe-file engine/data/universe/nasdaq100.example.txt --provider none --top-k 3 --dry-run`
+- Real‑time (market hours): `python -m engine.tools.real_time_alert --features data/datasets/features_daily_1D.parquet --model-pkl data/models/meta_lr.pkl --universe-file engine/data/universe/nasdaq100.example.txt --times "09:35,15:55" --poll 15`
+- Live price cascade (when `--price-source live`): Polygon last trade → Polygon snapshot → Yahoo fast_info → Yahoo quote → Polygon previous close. Works regardless of `--live-provider`. Set `alert.polygon_plan: starter` to skip last trade/snapshot. See docs/polygon_api.md.
+ - Tip: Ensure `POLYGON_API_KEY` is loaded (see `scripts/load-env.ps1`). For Yahoo fallback, no key needed.
+ - Optional ex-dividend blackout: build dividends via `python -m engine.tools.build_dividends_map --universe-file ... --out data/reference/dividends.csv` and pass `--dividends-csv ... --exdiv-blackout-days 1..3` to `entry_loop`.
 
-Both currently print loaded settings and TODOs (no trading loop yet).
+Reference Utilities (Polygon)
+-----------------------------
+- Build universe: `python -m engine.tools.build_universe_polygon --out engine/data/universe/us_all.txt --types CS --exchanges NASDAQ,NYSE,ARCA`
+- Build sector map: `python -m engine.tools.build_sector_map_polygon --universe-file engine/data/universe/us_all.txt --out engine/data/sector_map.csv`
+- Build dividends map: `python -m engine.tools.build_dividends_map --universe-file engine/data/universe/us_all.txt --start 2020-01-01 --out engine/data/dividends.csv`
 
+Paper Trader
+------------
+- Daily step: `python -m engine.tools.paper_trader --features data/datasets/features_daily_1D.parquet --pred data/datasets/meta_predictions.parquet --universe-file engine/data/universe/nasdaq100.example.txt --top-k 20 --state-dir data/paper --cost-bps 5 --turnover-cap 0.3`
+- Update via script: `./scripts/update-paper-ledger.ps1 -Config engine/config.research.yaml`
 
-Real-Time Price Stream (Finnhub WebSocket)
-------------------------------------------
-Module: engine/data/stream_finnhub.py
+UI (Streamlit)
+--------------
+- Run: `streamlit run ui/app.py`
+- Presets and account/risk settings managed in‑app; YAML saved for reuse.
 
-Command:
-  python -m engine.data.stream_finnhub --symbols SYMBOLS [options]
+Optional LSTM Specialist
+------------------------
+- Train: `python -m engine.models.train_lstm_spec --features data/datasets/features_daily_1D.parquet --feature-set tech --target log_return --window 40 --hidden 64 --epochs 40 --out data/models/spec_lstm.pt`
+- Enable in YAML under `specialists.lstm` and re‑run CV/meta.
 
-Required:
-- --symbols: Comma-separated list, e.g., AAPL,MSFT,TSLA or BINANCE:BTCUSDT
-
-Optional:
-- --token TOKEN: Finnhub API token (or set FINNHUB_API_KEY env var)
-- --debug: Print ping/non-trade messages for connectivity debugging
-- --status-interval SECONDS: Periodic status lines showing last message/trade
-- --ohlc-interval INTERVAL: Aggregate trades into candles and print at close
-   • Examples: 1s, 5s, 1m, 5m, 1h (numeric + unit; seconds if numeric only)
-
-Environment variables:
-- FINNHUB_API_KEY: Finnhub token used if --token not supplied
-
-Behavior:
-- Prints one line per trade: [local time] SYMBOL price size
-- If --ohlc-interval is set, prints [CANDLE] line on each interval close with O/H/L/C/V
-- No candles are emitted for intervals with zero trades (no empty-bar fill)
-
-Notes/Constraints:
-- Real-time equities depend on Finnhub plan and exchange permissions
-- Off-hours may yield no trades; test with a 24/7 symbol like BINANCE:BTCUSDT
-
-
-Data Adapters
----------------------------
-- engine/data/alphavantage_daily.py: Fetches TIME_SERIES_DAILY_ADJUSTED and computes adjusted OHLCV
-- engine/data/build_dataset.py: CLI to build per-symbol Parquet files
-  Usage:
-    python -m engine.data.build_dataset --universe-file engine/data/universe/nasdaq100.example.txt \
-      --start 2015-01-01 --end 2025-01-01 --api-key YOUR_KEY
-  Notes:
-  - Set env ALPHAVANTAGE_API_KEY instead of --api-key if preferred
-  - Respects free-tier rate limit via --max-per-minute (default 5)
-  - Writes to storage_root/equities/alphavantage/daily_1D/SYMBOL.parquet
-
-
-Models (CV/Calibration/Meta)
-----------------------------
-- engine/models/meta_learner.py: MetaLearner with predict_proba placeholder
-- engine/models/calibration.py: Platt (logistic) and isotonic calibration helpers
-- engine/models/cv.py: Rolling yearly time-based splits + purged KFold
-- engine/models/run_cv.py: CLI to generate OOF specialist probabilities with calibration
-  Options:
-    --news-sentiment PATH   Optional CSV/Parquet with columns: date,symbol,sentiment [-1,1]
-    --calibrators-out PATH  Save per-specialist calibrators (pickle) fitted on aggregated OOF
-- engine/models/train_meta.py: Train meta-learner on OOF probs; save model and test predictions
-
-
-Portfolio / Risk / Sizing
--------------------------
-- engine/portfolio/sizing.py: size_from_probability(p, alpha=1.0, w_max=0.10)
-- engine/portfolio/risk.py: is_order_safe(order, max_spread_bps=50.0)
-
-
-Feature Engineering
--------------------
-- Baseline features (per symbol): momentum (20D), SMA(5/20) crossover, price z-score (20D),
-  mean-reversion proxy, log-volume z-score (20D), ATR(14) percent, plus 1/5/20D returns.
-- Specialists (V0):
-  - engine/features/spec_patterns.py     -> spec_pattern in [-1,1]
-  - engine/features/spec_technicals.py   -> spec_technical in [-1,1]
-  - engine/features/spec_sequence.py     -> spec_sequence in [-1,1]
-  - engine/features/spec_news.py         -> spec_nlp in [-1,1] (0 if no sentiment file)
-- Aggregator: engine/features/specialists.py (computes all four spec_* columns)
-- CLI builder: engine/features/build_features.py
-  Usage:
-    python -m engine.features.build_features --universe-file engine/data/universe/nasdaq100.example.txt \
-      --start 2015-01-01 --end 2025-01-01 --out datasets/features_nasdaq100_1D.parquet
-
-
-Execution Adapters (Stubs)
---------------------------
-- engine/exec/broker_base.py: abstract Broker interface
-- engine/exec/ibkr.py: IBKRBroker stub (requires ib-insync when implemented)
-- engine/exec/tradier.py: TradierBroker stub (REST when implemented)
-
+Configuration
+-------------
+- Key sections: `specialists.*`, `risk.*`, `paths.*`, `alert.*`.
+- Risk gates (e.g., `min_adv_usd`, `max_atr_pct`, `earnings_blackout`) and sizing (`account_equity`, `risk_pct`, `stop_atr_mult`).
+- Example configs: `engine/config.research.yaml`, presets in `engine/presets/`.
 
 Requirements
 ------------
-Key packages in requirements.txt:
-- pandas, numpy, scikit-learn, xgboost, statsmodels, duckdb, mlflow, pydantic
-- python-dotenv, requests, websocket-client, pandas-market-calendars
-Commented (planned): ib-insync for IBKR
+- Core: pandas, numpy, scikit‑learn, requests, pyyaml, pyarrow, tqdm.
+- Extras: streamlit, pandas_market_calendars. Optional: torch (for LSTM).
 
+Discord Webhooks
+----------------
+- Use separate channels by setting env vars:
+  - `DISCORD_ALERTS_WEBHOOK_URL` for stock recommendation alerts (trade_alert/real_time_alert)
+  - `DISCORD_TRADES_WEBHOOK_URL` for paper trading executions (paper_trader)
+  - If unset, both fall back to `DISCORD_WEBHOOK_URL`.
 
-Examples
---------
-Stream trades for AAPL/MSFT:
-  export FINNHUB_API_KEY=YOUR_KEY   # PowerShell: $env:FINNHUB_API_KEY="YOUR_KEY"
-  python -m engine.data.stream_finnhub --symbols AAPL,MSFT --status-interval 10
+Common Workflows
+----------------
+1) Build → Features → CV → Meta → Backtest
+2) Preview Trade Alert (dry‑run) → enable Discord
+3) Paper trade daily or run‑to‑end; review `data/paper/`
+4) Start real‑time alerts at set times (market hours)
 
-Stream and build 1m candles (useful during market hours):
-  python -m engine.data.stream_finnhub --symbols AAPL,MSFT --ohlc-interval 1m
-
-Off-hours connectivity test with crypto (24/7):
-  python -m engine.data.stream_finnhub --symbols BINANCE:BTCUSDT --ohlc-interval 5s --debug --status-interval 10
-
-Historical build for NASDAQ-100 (edit the example file to the current list):
-  python -m engine.data.build_dataset --universe-file engine/data/universe/nasdaq100.example.txt \
-    --start 2010-01-01 --max-per-minute 5
-
-Build baseline features and run CV + calibration:
-  python -m engine.features.build_features --universe-file engine/data/universe/nasdaq100.example.txt \
-    --start 2015-01-01 --out data/datasets/features_nasdaq100_1D.parquet
-  python -m engine.models.run_cv --features data/datasets/features_nasdaq100_1D.parquet \
-    --label label_up_1d --calibration platt --out data/datasets/oof_specialists.parquet
-
-Train meta-learner and produce test predictions (last year holdout):
-  python -m engine.models.train_meta --oof data/datasets/oof_specialists.parquet \
-    --train-folds all-but-last:1 --test-folds last:1 \
-    --out data/datasets/meta_predictions.parquet --model-out data/models/meta_lr.pkl
-
-Backtest daily top-K with meta probabilities:
-  python -m engine.backtest.simple_daily --features data/datasets/features_daily_1D.parquet \
-    --pred data/datasets/meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 \
-    --rebalance weekly --rebal-weekday MON --turnover-cap 0.5 \
-    --report-csv data/backtests/daily_topk_results.csv --report-html data/backtests/daily_topk_report.html \
-    --mlflow --mlflow-experiment research-backtest
-
-End-to-end research runner (chain all steps):
-  python -m engine.research.runner --universe-file engine/data/universe/nasdaq100.example.txt \
-    --start 2015-01-01 --calibration platt --top-k 20 --cost-bps 5 \
-    --rebalance weekly --rebal-weekday MON --turnover-cap 0.5 \
-    --report-csv data/backtests/daily_topk_results.csv --report-html data/backtests/daily_topk_report.html \
-    --mlflow --mlflow-experiment research-e2e --run-name pipeline
-
-CV options:
-- Rolling yearly (default) or time_kfold with purge/embargo:
-  python -m engine.models.run_cv --features data/datasets/features_nasdaq100_1D.parquet \
-    --cv-scheme time_kfold --kfolds 5 --purge-days 5 --embargo-days 5 --out data/datasets/oof_specialists.parquet \
-    --mlflow --mlflow-experiment research-cv
-
-
-Market-Time Utilities
----------------------
-- Show NASDAQ/NYSE session times in your local timezone:
-  python -m engine.tools.market_time_info --calendar NASDAQ
-
-- Run a command only during market hours (autostart/stop):
-  python -m engine.tools.run_during_market -- \
-    python -m engine.data.stream_finnhub --symbols AAPL,MSFT --ohlc-interval 1m
-
-
-Current Limitations / Next Steps
---------------------------------
-- Backtest/live loops are placeholders; no end-to-end trading yet
-- No persistence layer for streamed data (in-memory only)
-- No historical bar downloader wired up (Polygon stub only)
-- No broker connectivity (IBKR/Tradier adapters are stubs)
-- Candle aggregator does not emit empty bars or carry-forward prices
-
-Potential improvements:
-- Persist trades/candles to parquet under storage_root
-- Historical OHLCV fetch (Polygon/Tiingo) and loader
-- Wire specialists + calibration + meta-learner into backtest loop
-- Implement broker adapters (paper/live) and risk checks in order routing
-- Add config-driven CLI (argparse) for main_backtest/main_live modes
-Predict daily picks (latest date):
-  python -m engine.tools.predict_daily \
-    --features data/datasets/features_daily_1D.parquet \
-    --model-pkl data/models/meta_lr.pkl \
-    --calibrators-pkl data/models/spec_calibrators.pkl \
-    --news-sentiment data/datasets/dummy_sentiment.parquet \
-    --top-k 20 --out-csv data/signals/picks.csv
-
-Build dummy sentiment (format/testing):
-  python -m engine.data.build_dummy_sentiment \
-    --features data/datasets/features_daily_1D.parquet \
-    --out data/datasets/dummy_sentiment.parquet --noise 0.1
-Trade alert (top setup + news sentiment):
-  python -m engine.tools.trade_alert \
-    --features data/datasets/features_daily_1D.parquet \
-    --model-pkl data/models/meta_lr.pkl \
-    --calibrators-pkl data/models/spec_calibrators.pkl \
-    --universe-file engine/data/universe/nasdaq100.example.txt \
-    --provider finnhub --from-days 3 --top-k 1 \
-    --min-adv-usd 10000000 --max-atr-pct 0.05 \
-    --earnings-file path/to/earnings.csv --earnings-blackout 2 \
-    --slack-webhook https://hooks.slack.com/...  --discord-webhook https://discord.com/api/webhooks/...
-
-Requires FINNHUB_API_KEY for news fetching. Outputs top candidates with recent headline sentiment summary.
+Notes
+-----
+- Signals are daily; real‑time just triggers daily logic intraday.
+- No broker integration in scope. News provider `finnhub` needs `FINNHUB_API_KEY`.

@@ -9,14 +9,52 @@ from .providers import NewsItem
 
 
 POSITIVE = {
-    "beat", "beats", "beating", "surge", "soar", "soars", "record", "profit", "profits",
-    "growth", "upbeat", "upgrade", "upgraded", "raises", "raise", "strong", "outperform",
-    "buy", "bullish", "optimistic", "tailwind", "resilient",
+    "beat",
+    "beats",
+    "beating",
+    "surge",
+    "soar",
+    "soars",
+    "record",
+    "profit",
+    "profits",
+    "growth",
+    "upbeat",
+    "upgrade",
+    "upgraded",
+    "raises",
+    "raise",
+    "strong",
+    "outperform",
+    "buy",
+    "bullish",
+    "optimistic",
+    "tailwind",
+    "resilient",
 }
 NEGATIVE = {
-    "miss", "misses", "slump", "slumps", "loss", "losses", "downgrade", "downgraded", "sell",
-    "underperform", "cuts", "cut", "weak", "bearish", "cautious", "lawsuit", "investigation",
-    "probe", "fraud", "guidance cut", "warns", "warning",
+    "miss",
+    "misses",
+    "slump",
+    "slumps",
+    "loss",
+    "losses",
+    "downgrade",
+    "downgraded",
+    "sell",
+    "underperform",
+    "cuts",
+    "cut",
+    "weak",
+    "bearish",
+    "cautious",
+    "lawsuit",
+    "investigation",
+    "probe",
+    "fraud",
+    "guidance cut",
+    "warns",
+    "warning",
 }
 
 
@@ -32,7 +70,9 @@ def _score_text(text: str) -> float:
     return float(np.clip(score, -1.0, 1.0))
 
 
-def score_news(items: Iterable[NewsItem]) -> Tuple[float, int, List[Tuple[NewsItem, float]]]:
+def score_news(
+    items: Iterable[NewsItem],
+) -> Tuple[float, int, List[Tuple[NewsItem, float]]]:
     """Return (average_sentiment, count, details[(item,score)])."""
     details: List[Tuple[NewsItem, float]] = []
     for it in items:
@@ -42,4 +82,3 @@ def score_news(items: Iterable[NewsItem]) -> Tuple[float, int, List[Tuple[NewsIt
         return 0.0, 0, []
     avg = float(np.mean([s for _, s in details]))
     return float(np.clip(avg, -1.0, 1.0)), len(details), details
-

@@ -1,0 +1,42 @@
+paths:
+  # Polygon-built features parquet on D: (adjust to your chosen data root)
+  features: "D:\\EngineData\\datasets\\features_daily_1D.parquet"
+  # Optional: intraday snapshot parquet (if you generate it)
+  # intraday_features: "D:\\EngineData\\datasets\\features_intraday_latest.parquet"
+  sentiment_out: "D:\\EngineData\\datasets\\sentiment_finbert.parquet"
+  picks_csv: "D:\\EngineData\\signals\\picks.csv"
+
+finbert:
+  # Keep using your preferred universe file
+  universe_file: engine/data/universe/us_all.txt
+  days: 3
+  model: yiyanghkust/finbert-tone
+  provider: polygon
+  skip_on_rate_limit: true
+
+predict:
+  top_k: 20
+
+alert:
+  universe_file: engine/data/universe/us_all.txt
+  top_k: 5
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+  slack_webhook: ${SLACK_WEBHOOK_URL}
+  news_provider: polygon
+  # Pricing for sizing/message
+  price_source: live         # feature | live
+  live_provider: polygon     # polygon | yahoo
+  use_intraday_features: false
+  mix_intraday_weight: 1.0
+  allow_stale_features: false
+
+risk:
+  account_equity: 20000
+  risk_mode: auto
+  min_risk_pct: 0.0035
+  max_risk_pct: 0.0070
+  risk_curve: sqrt
+  base_prob: 0.52
+  stop_atr_mult: 1.0
+  max_name_weight: 0.10
+  # max_position_notional: 2000

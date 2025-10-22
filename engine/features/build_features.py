@@ -21,14 +21,35 @@ from .baseline import compute_baseline_features
 
 def read_universe(path: str) -> List[str]:
     with open(path, "r", encoding="utf-8") as f:
-        return [ln.strip().upper() for ln in f.readlines() if ln.strip() and not ln.startswith("#")]
+        return [
+            ln.strip().upper()
+            for ln in f.readlines()
+            if ln.strip() and not ln.startswith("#")
+        ]
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Build baseline features for a universe")
-    p.add_argument("--universe-file", required=True, help="Path to a text file with one SYMBOL per line")
-    p.add_argument("--start", type=str, default="2010-01-01", help="Start date YYYY-MM-DD")
-    p.add_argument("--end", type=str, default="", help="End date YYYY-MM-DD (default=all available)")
+    p.add_argument(
+        "--universe-file",
+        required=True,
+        help="Path to a text file with one SYMBOL per line",
+    )
+    p.add_argument(
+        "--provider",
+        choices=["yahoo", "alphavantage", "polygon"],
+        default="yahoo",
+        help="Data provider for loading parquets",
+    )
+    p.add_argument(
+        "--start", type=str, default="2010-01-01", help="Start date YYYY-MM-DD"
+    )
+    p.add_argument(
+        "--end",
+        type=str,
+        default="",
+        help="End date YYYY-MM-DD (default=all available)",
+    )
     p.add_argument(
         "--out",
         type=str,
@@ -47,7 +68,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     frames: List[pd.DataFrame] = []
     for sym in tqdm(syms, desc="features"):
         try:
-            df = load_symbol(sym, start=start, end=end)
+            df = load_symbol(sym, start=start, end=end, provider=args.provider)
             # Keep only needed columns + labels if present
             cols_keep = [
                 "date",
@@ -77,10 +98,13 @@ def main(argv: Optional[List[str]] = None) -> None:
         os.makedirs(os.path.join(root, "datasets"), exist_ok=True)
         out_path = os.path.join(root, "datasets", "features_daily_1D.parquet")
 
+    # Ensure parent directory exists even when user passes a custom path
+    out_dir = os.path.dirname(out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     out.to_parquet(out_path, index=False)
     print(f"[features] rows={len(out)} symbols={len(syms)} -> {out_path}")
 
 
 if __name__ == "__main__":
     main()
-

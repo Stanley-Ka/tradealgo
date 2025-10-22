@@ -24,10 +24,24 @@ from ..infra.market_time import DEFAULT_CAL, is_open, next_session, seconds_unti
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run a command only during US market hours")
-    p.add_argument("--calendar", type=str, default=DEFAULT_CAL, help="Market calendar: NASDAQ or NYSE")
-    p.add_argument("--poll", type=int, default=15, help="Seconds between open/close checks")
-    p.add_argument("--", dest="cmdsep", action="store_true", help="Separator before the command to run")
-    p.add_argument("cmd", nargs=argparse.REMAINDER, help="Command to run during market hours")
+    p.add_argument(
+        "--calendar",
+        type=str,
+        default=DEFAULT_CAL,
+        help="Market calendar: NASDAQ or NYSE",
+    )
+    p.add_argument(
+        "--poll", type=int, default=15, help="Seconds between open/close checks"
+    )
+    p.add_argument(
+        "--",
+        dest="cmdsep",
+        action="store_true",
+        help="Separator before the command to run",
+    )
+    p.add_argument(
+        "cmd", nargs=argparse.REMAINDER, help="Command to run during market hours"
+    )
     return p.parse_args(argv)
 
 
@@ -46,7 +60,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     cal = args.calendar.upper()
     cmd = args.cmd
     if not cmd:
-        print("Provide a command after --, e.g., -- python -m engine.data.stream_finnhub --symbols AAPL")
+        print(
+            "Provide a command after --, e.g., -- python -m engine.data.stream_finnhub --symbols AAPL"
+        )
         sys.exit(2)
 
     child: Optional[subprocess.Popen] = None
@@ -68,7 +84,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                     secs = seconds_until(nxt.open_ts)
                     if secs > args.poll:
                         sleep_for = min(secs, 300)
-                        print(f"[runner] Sleeping {sleep_for}s until next check (next open in {secs}s)")
+                        print(
+                            f"[runner] Sleeping {sleep_for}s until next check (next open in {secs}s)"
+                        )
                         time.sleep(sleep_for)
                         continue
             time.sleep(max(1, args.poll))
@@ -85,4 +103,3 @@ def main(argv: Optional[List[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

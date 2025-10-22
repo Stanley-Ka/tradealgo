@@ -26,4 +26,3 @@ class Broker(ABC):
     @abstractmethod
     def cancel_all(self) -> Any:
         raise NotImplementedError
-

@@ -1,0 +1,91 @@
+specialists:
+  patterns:
+    engulfing: 0.5
+    hammer: 0.3
+    breakout: 0.2
+  technicals:
+    mom_x: 0.35
+    mom20: 0.20
+    rsi: 0.15
+    macd: 0.20
+    bb_guard: 0.05
+    z_guard: 0.05
+  breakout:
+    window: 20
+    atr_window: 14
+  flow:
+    obv: 0.6
+    mfi: 0.4
+    window_obv: 20
+    window_mfi: 14
+  adx:
+    enabled: false
+    period: 14
+  stoch_rsi:
+    rsi_period: 14
+    stoch_period: 14
+    smooth_k: 3
+  williams_r:
+    period: 14
+  cci:
+    period: 20
+  sequence:
+    window: 10
+  lstm:
+    enabled: true  # set true only with a provided PyTorch model
+    model_path: data/models/spec_lstm.pt
+    window: 40
+    feature_set: tech
+
+risk:
+  min_adv_usd: 10000000   # 20D average dollar volume
+  max_atr_pct: 0.05       # ATR(14)/price cap
+  earnings_blackout: 2    # +/- days
+  atr_missing_ok: true
+  account_equity: 200000
+  stop_atr_mult: 1.0
+  # Risk sizing for alerts/paper_trader
+  risk_mode: auto          # fixed | auto
+  min_risk_pct: 0.002      # 0.2%
+  max_risk_pct: 0.006      # 0.6%
+  risk_curve: quadratic    # linear | quadratic
+  sizing_mode: conviction_atr  # conviction_atr | (omit for equal-weight)
+  # If using fixed risk mode, fallback risk_pct is used
+  risk_pct: 0.005          # 0.5% (only used when risk_mode=fixed)
+  max_name_weight: 0.10    # cap per name to 10% of equity for sizing sanity
+  # Expected outcome calibration (optional; see tools/update_expectation_from_logs.py)
+  # base_prob: 0.50
+  # expected_k: 2.50
+  # expected_cap_mult: 2.0
+  # horizon_cut1: 0.55
+  # horizon_cut2: 0.60
+
+alert:
+  top_k: 1
+  news_provider: polygon
+  news_lookback_days: 3
+  universe_file: engine/data/universe/nasdaq100.example.txt
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+  price_source: live
+  live_provider: polygon
+  # Optional price filters on candidates (applied on target date)
+  # min_price: 1.0
+  # max_price: 20.0
+
+calibration:
+  kind: platt
+  calibrators_pkl: D:\\EngineData\\models\\spec_calibrators.pkl
+
+paths:
+  features: D:\\EngineData\datasets\features_daily_polygon.parquet
+  meta_model: D:\\EngineData\\models\\meta_hgb.pkl
+  oof: D:\\EngineData\\datasets\\oof_specialists.parquet
+  news_sentiment: data/datasets/sentiment_finbert.parquet
+
+# Optional paper-trading section for webhook overrides
+paper:
+  discord_webhook: ${DISCORD_TRADES_WEBHOOK_URL}
+  # Decision log and dynamic specialist weighting
+  decision_log_csv: data/paper/decision_log.csv
+  specialist_weights_yaml: data/paper/specialist_weights.yaml
+  use_specialist_weights: true

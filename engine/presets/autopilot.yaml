@@ -1,0 +1,36 @@
+name: autopilot
+
+paths:
+  # Use your D: storage root artifacts written by weekly-train
+  features: D:\\EngineData\\datasets\\features_daily_1D.parquet
+  meta_model: D:\\EngineData\\models\\meta_hgb.pkl
+  oof: D:\\EngineData\\datasets\\oof_specialists.parquet
+  calibrators_pkl: D:\\EngineData\\models\\spec_calibrators.pkl
+
+provider:
+  polygon_plan: starter
+
+calibration:
+  kind: isotonic
+
+alert:
+  # Autopilot defaults; real_time_alert reads these when not set on CLI
+  top_k: 3
+  universe_file: engine/data/universe/watchlist.txt
+  price_source: live
+  live_provider: polygon
+  signal_threshold: 0.58
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+
+paper:
+  discord_webhook: ${DISCORD_TRADES_WEBHOOK_URL}
+
+risk:
+  min_adv_usd: 10000000
+  max_atr_pct: 0.08
+  risk_mode: auto
+  min_risk_pct: 0.003
+  max_risk_pct: 0.008
+  base_prob: 0.50
+  stop_atr_mult: 1.0
+  max_name_weight: 0.12

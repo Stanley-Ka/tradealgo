@@ -1,158 +1,108 @@
 # Trading Engine Scaffold
 
-This repository initializes a research and execution pipeline for a US equities swing-trading bot built around four specialist models whose calibrated probabilities are combined by a meta-learner into a final trading decision.
+Research‑first US equities engine focused on swing trading: daily features, specialist ensemble with calibration, logistic/meta learners, simple backtests, Discord trade alerts, and a paper trader. A Streamlit UI is included.
 
-Key ideas mirrored here:
-- Four specialists (V0): patterns (candlesticks), technical indicators, light sequence proxy, and news/NLP (optional sentiment input).
-- Calibrate probabilities (e.g., Platt or isotonic) before combining.
-- Meta-learner (stacking) over calibrated probabilities + context features.
-- Portfolio and execution layers incorporate costs, constraints, and risk checks.
+Note: The engine is now swing‑only. Intraday style presets have been removed to simplify training and operations for swing strategies. Use the swing presets in `engine/presets/` (aggressive/conservative).
 
-## Layout
+See `ENGINE_CAPABILITIES.txt` for command references and `ROADMAP.md` for planned phases. For Polygon endpoint details and pricing fallbacks, read `docs/polygon_api.md`.
+
+## Install
 
 ```
-engine/
-  data/            # parquet, cached metadata (storage, ignored by git)
-  features/        # five specialists + calibration utilities
-  models/          # meta-learner, model registry
-  portfolio/       # sizing, constraints, risk checks
-  exec/            # broker adapters (IBKR, Tradier) + base interface
-  infra/           # config, logging, scheduling stubs
-  main_backtest.py # entry for research/backtests
-  main_live.py     # entry for live/paper execution
-  settings.toml    # project settings (non-secret)
-```
-
-## Quick start
-
-1) Create a virtual environment and install requirements:
-```
-python -m venv .venv && source .venv/bin/activate  # on Windows: .venv\\Scripts\\activate
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2) Configure settings in `engine/settings.toml`; copy secrets to a local `.env` (do not commit).
+Secrets: never commit API keys. Use environment variables or `scripts/api.env` (used by PowerShell scripts).
 
-3) Run backtest stub:
-```
-python -m engine.main_backtest
-```
+## Quick Start
 
-4) Run live stub (paper):
+Build data and features (Yahoo, free):
 ```
-python -m engine.main_live
+python -m engine.data.build_dataset --provider yahoo --universe-file engine/data/universe/nasdaq100.example.txt --start 2015-01-01
+python -m engine.features.build_features --universe-file engine/data/universe/nasdaq100.example.txt --start 2015-01-01 --out data/datasets/features_daily_1D.parquet
 ```
 
-Capabilities overview: see `ENGINE_CAPABILITIES.txt` for all settings and commands.
-Market hours (local timezone):
-- Show NASDAQ/NYSE session times: `python -m engine.tools.market_time_info --calendar NASDAQ`
-- Run only during market hours: `python -m engine.tools.run_during_market -- python -m engine.data.stream_finnhub --symbols AAPL,MSFT`
-
-Legal/tax notes for AU→US trading: see `LEGAL_NOTES_AU_US.md` (not legal advice).
-
-### Live price stream (no visualization)
-
-To stream live US stock trades in your terminal using Finnhub WebSocket:
-
+Cross‑validate specialists and train meta:
 ```
-# Set your Finnhub API key (https://finnhub.io)
-export FINNHUB_API_KEY=YOUR_KEY_HERE   # Windows PowerShell: $env:FINNHUB_API_KEY="YOUR_KEY_HERE"
-
-# Stream trades for AAPL and MSFT
-python -m engine.data.stream_finnhub --symbols AAPL,MSFT
+python -m engine.models.run_cv --features data/datasets/features_daily_1D.parquet --label label_up_1d --calibration platt --out data/datasets/oof_specialists.parquet --calibrators-out data/models/spec_calibrators.pkl
+python -m engine.models.train_meta --oof data/datasets/oof_specialists.parquet --train-folds all-but-last:1 --test-folds last:1 --out data/datasets/meta_predictions.parquet --model-out data/models/meta_lr.pkl
 ```
 
-Notes:
-- Free Finnhub plans have rate/usage limits and may differ in coverage/latency.
-- Output prints a line per trade with timestamp, symbol, price, and size.
-
-To also print OHLCV candles aggregated from trades (e.g., 1-minute bars):
-
+Backtest top‑K strategy:
 ```
-python -m engine.data.stream_finnhub --symbols AAPL,MSFT --ohlc-interval 1m --status-interval 10
+python -m engine.backtest.simple_daily --features data/datasets/features_daily_1D.parquet --pred data/datasets/meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 --report-html data/backtests/daily_topk_report.html
 ```
 
-- `--ohlc-interval` supports `1s,5s,1m,5m,1h` etc. Candles print when the interval closes.
-- Use `--debug` to see pings and raw messages if nothing prints (off-hours).
-
-## Next steps
-
-- Implement data adapters (e.g., Polygon/Tiingo) in `engine/data/` and persist to Parquet.
-- Alpha Vantage daily-adjusted fetcher and dataset builder are available:
-  - Build dataset: `python -m engine.data.build_dataset --universe-file engine/data/universe/nasdaq100.example.txt --start 2010-01-01`
-  - Set `ALPHAVANTAGE_API_KEY` (or use `--api-key`) and respect rate limits.
-- Flesh out the five specialists in `engine/features/` and add calibration.
-- Build baseline features for a universe/date range:
-  - `python -m engine.features.build_features --universe-file engine/data/universe/nasdaq100.example.txt --start 2015-01-01 --out datasets/features_nasdaq100_1D.parquet`
-- Implement the meta-learner in `engine/models/meta_learner.py` and wire into backtests.
-- Run time-based CV + calibration on specialists (optionally with news sentiment file):
-  - `python -m engine.models.run_cv --features data/datasets/features_nasdaq100_1D.parquet --label label_up_1d --calibration platt --out data/datasets/oof_specialists.parquet [--news-sentiment path/to/sentiment.parquet]`
-- Train the meta-learner and backtest daily top-K:
-  - Train meta: `python -m engine.models.train_meta --oof data/datasets/oof_specialists.parquet --train-folds all-but-last:1 --test-folds last:1 --out data/datasets/meta_predictions.parquet`
-  - Backtest: `python -m engine.backtest.simple_daily --features data/datasets/features_daily_1D.parquet --pred data/datasets/meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 --rebalance weekly --rebal-weekday MON --turnover-cap 0.5 --report-csv data/backtests/daily_topk_results.csv --report-html data/backtests/daily_topk_report.html --mlflow --mlflow-experiment research-backtest`
-
-End-to-end research runner (chains all steps with sensible defaults):
-- `python -m engine.research.runner --universe-file engine/data/universe/nasdaq100.example.txt --start 2015-01-01 --calibration platt --top-k 20 --cost-bps 5 --rebalance weekly --rebal-weekday MON --turnover-cap 0.5 --report-csv data/backtests/daily_topk_results.csv --report-html data/backtests/daily_topk_report.html --mlflow --mlflow-experiment research-e2e --run-name pipeline`
-
-CV options:
-- Use time_kfold with purge/embargo and MLflow logging: `python -m engine.models.run_cv --features data/datasets/features_nasdaq100_1D.parquet --cv-scheme time_kfold --kfolds 5 --purge-days 5 --embargo-days 5 --out data/datasets/oof_specialists.parquet --mlflow --mlflow-experiment research-cv`
-- Add cost model + constraints to `engine/portfolio/` and connect a backtest engine (Lean/backtrader).
-- Implement broker adapters in `engine/exec/` (IBKR via ib_insync, Tradier via REST) and test paper trading.
-### Predict Daily Picks (Meta)
-
-After training a meta model, you can produce a ranked list for the latest date:
-
+Trade alert (Discord or dry‑run):
 ```
-python -m engine.tools.predict_daily \
+python -m engine.tools.trade_alert --features data/datasets/features_daily_1D.parquet --model-pkl data/models/meta_lr.pkl --universe-file engine/data/universe/nasdaq100.example.txt --provider none --top-k 3 --dry-run
+```
+
+Live price source notes:
+- When `--price-source live` is used, the engine now tries: Polygon last trade → Polygon snapshot → Yahoo fast_info → Yahoo quote → Polygon previous close. This works even if `--live-provider polygon` is set.
+- Quick workaround if Polygon last trade is blocked by plan/rate‑limit: add `--price-source live --live-provider yahoo`.
+ - Starter plan hint: set `alert.polygon_plan: starter` (or `provider.polygon_plan: starter`) in any preset to gracefully skip unauthorized Polygon live endpoints.
+
+Polygon reference utilities:
+- Build US stocks universe: `python -m engine.tools.build_universe_polygon --out engine/data/universe/us_all.txt --types CS --exchanges NASDAQ,NYSE,ARCA`
+- Build sector map: `python -m engine.tools.build_sector_map_polygon --universe-file engine/data/universe/us_all.txt --out engine/data/sector_map.csv`
+- Build dividends map and enable ex‑div blackout in entries: `python -m engine.tools.build_dividends_map --universe-file engine/data/universe/us_all.txt --start 2020-01-01 --out engine/data/dividends.csv`, then run entry loop with `--dividends-csv engine/data/dividends.csv --exdiv-blackout-days 1`
+
+Real‑time alerts during market hours (Windows PowerShell):
+```
+./scripts/start-rt-alert.ps1 -Every 5
+./scripts/stop-rt-alert.ps1
+```
+Or via Python directly (not limited to fixed times):
+```
+python -m engine.tools.real_time_alert --config engine/presets/ver1_polygon.yaml \
+  --every-minutes 1 --price-source live --mix-intraday 0.3 --intraday-features data/datasets/features_intraday_latest.parquet \
+  --alert-log-csv data/alerts/diag.csv --send-updates --demote-below-prob 0.50
+```
+This recalculates meta probabilities every minute (optionally blending intraday snapshot), sends compact Discord alerts with bold entry/stop, and follows up with delta updates (price/prob changes). Use `--cooldown-mins` to avoid repeats.
+
+Test Discord webhooks and Polygon capabilities:
+```
+python -m engine.tools.validate_config --config engine/presets/ver1_polygon.yaml --send-discord-test
+python -m engine.tools.polygon_probe
+```
+
+Paper trader (daily ledger update):
+```
+./scripts/update-paper-ledger.ps1 -Config engine/config.research.yaml
+```
+
+Weekly overview and dynamic specialist weighting:
+```
+# Step paper trader daily with specialist logging and dynamic weights
+./scripts/paper-trade.ps1 -Config engine/config.research.yaml
+
+# End of week: summarize closed trades, update weights, and write report
+./scripts/weekly-overview.ps1 -DecisionLog data/paper/decision_log.csv -OutMD data/reports/weekly_overview.md -WeightsOut data/paper/specialist_weights.yaml -Weeks 1
+```
+
+Daily routine (manual, compact):
+```
+./scripts/daily-run.ps1 -Config engine/config.research.yaml
+```
+
+- Build a swing training dataset (multi‑horizon labels):
+```
+python -m engine.tools.build_swing_dataset \
   --features data/datasets/features_daily_1D.parquet \
-  --model-pkl data/models/meta_lr.pkl \
-  --oof data/datasets/oof_specialists.parquet \
-  --news-sentiment data/datasets/dummy_sentiment.parquet \
-  --top-k 20 --out-csv data/signals/picks.csv
+  --model-pkl data/models/meta_hgb.pkl \
+  --universe-file engine/data/universe/swing_aggressive.watchlist.txt \
+  --timeframes 3,7,14 --entry-price close --top-k 20 \
+  --start 2017-01-01 --out data/datasets/swing_training_dataset.parquet --resume
 ```
+This writes per-entry rows with meta/specialist probabilities, ADV/ATR context, and ret_/label_up_3d/7d/14d for supervised training.
 
-Notes:
-- If `--oof` is provided, per-specialist calibrators are fit from OOF raw->prob and applied to today’s scores.
-- Without `--oof`, a naive mapping maps raw [-1,1] to prob [0,1].
+## UI and Utilities
 
-### Dummy Sentiment Builder
+- UI: `streamlit run ui/app.py`
+- Market hours info: `python -m engine.tools.market_time_info --calendar NASDAQ`
+- Run only during market hours: `python -m engine.tools.run_during_market -- python -m engine.tools.trade_alert --dry-run`
+- Secret scanner: `python -m engine.tools.scan_secrets --all`
 
-Create a placeholder sentiment file (for format/testing only):
-
-```
-python -m engine.data.build_dummy_sentiment \
-  --features data/datasets/features_daily_1D.parquet \
-  --out data/datasets/dummy_sentiment.parquet --noise 0.1
-```
-
-Outputs columns `date,symbol,sentiment` in [-1,1].
-
-### Trade Alert (Top Setup + News)
-
-Find the most promising setup in a universe (e.g., NASDAQ‑100) and fetch recent news with a simple sentiment score:
-
-```
-python -m engine.tools.trade_alert \
-  --features data/datasets/features_daily_1D.parquet \
-  --model-pkl data/models/meta_lr.pkl \
-  --oof data/datasets/oof_specialists.parquet \
-  --universe-file engine/data/universe/nasdaq100.example.txt \
-  --provider finnhub --from-days 3 --top-k 1
-```
-
-Notes:
-- Requires `FINNHUB_API_KEY` for news fetching.
-- Optional calibrators file (avoids needing OOF at prediction time): run CV with `--calibrators-out data/models/spec_calibrators.pkl` and then pass `--calibrators-pkl` to predictors/alert.
-- Risk gates: use `--min-adv-usd` (20D average dollar volume), `--max-atr-pct`, and optionally provide an `--earnings-file` with `date,symbol` to apply a blackout via `--earnings-blackout`.
-- Notifications: set `--slack-webhook` or `--discord-webhook` (or env `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL`).
-
-### YAML Configuration (sensitivity and defaults)
-
-You can centralize critical parameters in a YAML file. An example is provided at `engine/config.example.yaml`:
-
-```
-python -m engine.tools.trade_alert --config engine/config.example.yaml
-python -m engine.tools.predict_daily --config engine/config.example.yaml
-```
-
-CLI flags still override YAML values. The YAML includes specialist weights/windows, risk gates, calibrator paths, universe file, provider, and Discord webhook.
+Legal/tax notes (AU→US): `LEGAL_NOTES_AU_US.md` (not legal advice).

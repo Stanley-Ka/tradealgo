@@ -5,7 +5,12 @@ import pandas as pd
 
 
 def _bullish_engulfing(df: pd.DataFrame) -> pd.Series:
-    o, c, p_o, p_c = df["adj_open"], df["adj_close"], df["adj_open"].shift(1), df["adj_close"].shift(1)
+    o, c, p_o, p_c = (
+        df["adj_open"],
+        df["adj_close"],
+        df["adj_open"].shift(1),
+        df["adj_close"].shift(1),
+    )
     prev_red = p_c < p_o
     cur_green = c > o
     engulf = (c >= p_o) & (o <= p_c)
@@ -19,7 +24,11 @@ def _hammer(df: pd.DataFrame) -> pd.Series:
     lower_shadow = (np.minimum(o, c) - l).abs()
     upper_shadow = (h - np.maximum(o, c)).abs()
     # Hammer: small body near high, long lower shadow
-    cond = (lower_shadow / range_ > 0.5) & (upper_shadow / range_ < 0.2) & (body / range_ < 0.3)
+    cond = (
+        (lower_shadow / range_ > 0.5)
+        & (upper_shadow / range_ < 0.2)
+        & (body / range_ < 0.3)
+    )
     return cond.fillna(False).astype(float)
 
 
@@ -44,5 +53,9 @@ def compute_spec_patterns(df: pd.DataFrame, weights: dict | None = None) -> pd.S
     hm = _hammer(df)
     br = _inside_day_breakout(df)
     w = weights or {"engulfing": 0.5, "hammer": 0.3, "breakout": 0.2}
-    raw = float(w.get("engulfing", 0.5)) * be + float(w.get("hammer", 0.3)) * hm + float(w.get("breakout", 0.2)) * br
+    raw = (
+        float(w.get("engulfing", 0.5)) * be
+        + float(w.get("hammer", 0.3)) * hm
+        + float(w.get("breakout", 0.2)) * br
+    )
     return raw.clip(-1.0, 1.0)

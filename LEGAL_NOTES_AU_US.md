@@ -40,4 +40,3 @@ Checklist (Non-exhaustive)
 - Risk controls implemented (position limits, gross/net exposure, throttle)
 - Logging and audit trail in place
 - Backups and process monitoring configured
-

@@ -1,0 +1,54 @@
+paths:
+  # Point features to the Polygon-built features parquet (see scripts/rebuild-polygon.ps1)
+  features: D:\EngineData\datasets\features_daily_1D.parquet
+  meta_model: data/models/meta_lr.pkl
+  calibrators_pkl: data/models/spec_calibrators.pkl
+  sentiment_out: data/datasets/sentiment_finbert.parquet
+  picks_csv: data/signals/picks.csv
+  # Optional intraday snapshot path if you want to prefer intraday features
+  # intraday_features: data/datasets/features_intraday_latest.parquet
+
+finbert:
+  universe_file: engine/data/universe/nasdaq100.example.txt
+  days: 3
+  model: yiyanghkust/finbert-tone
+  provider: polygon
+  skip_on_rate_limit: true
+
+predict:
+  top_k: 20
+
+alert:
+  # If you extend the universe, switch this to engine/data/universe/us_all.txt
+  universe_file: engine/data/universe/us_all.txt
+  top_k: 5
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+  slack_webhook: ${SLACK_WEBHOOK_URL}
+  news_provider: polygon
+  # Live price override for sizing/message (optional)
+  price_source: live         # feature | live
+  live_provider: yahoo       # yahoo | polygon
+  allow_stale_features: false
+  # If you build an intraday snapshot via build_intraday_latest, you can use it here:
+  use_intraday_features: false
+  mix_intraday_weight: 1.0
+
+# Risk and sizing (applies to alerts)
+risk:
+  account_equity: 20000        # your capital
+  risk_mode: auto              # fixed | auto
+  min_risk_pct: 0.0035         # 0.35%
+  max_risk_pct: 0.0070         # 0.7%
+  risk_curve: sqrt             # faster ramp-up
+  base_prob: 0.52              # 0% conviction at 0.52, 100% at 1.0
+  stop_atr_mult: 1.0
+  # Notional caps (either one or both)
+  max_name_weight: 0.10        # 10% of equity per name max
+  # max_position_notional: 2000  # absolute $ cap per position
+
+# Paper trading
+paper:
+  discord_webhook: ${DISCORD_TRADES_WEBHOOK_URL}
+  decision_log_csv: data/paper/decision_log.csv
+  specialist_weights_yaml: data/paper/specialist_weights.yaml
+  use_specialist_weights: true

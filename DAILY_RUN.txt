@@ -1,0 +1,53 @@
+Daily Run — Quick Steps
+
+Prereqs
+- Put keys in `scripts/api.env` (never commit):
+  POLYGON_API_KEY=...  (optional)
+  DISCORD_WEBHOOK_URL=...
+  FINNHUB_API_KEY=...  (optional for news)
+
+1) Update universe (once daily, pre‑open)
+./scripts/update-universe.ps1 -Out engine/data/universe/us_all.txt -Types CS -Exchanges XNAS,XNYS,ARCX
+
+2) One‑shot Train → Meta → Backtest (writes local YAML with your paths)
+# Default wrapper; writes engine/presets/swing_aggressive.local.yaml with your paths
+./scripts/weekly-train.ps1
+
+3) Start unattended run during US hours (uses your local YAML)
+# Real‑time alerts and entry scheduler; leave running (auto-picks .local if present)
+./scripts/overnight.ps1 -Config engine/presets/swing_aggressive.yaml -AlertEvery 5 -EntryTimes "09:35,15:55" -StartManager
+# Check/stop
+./scripts/status.ps1
+./scripts/stop-rt-alert.ps1
+./scripts/stop-entry.ps1
+
+Logging (automatic when using start-overnight)
+- Alerts diagnostics CSV: `data/alerts/alert_diag.csv` (from trade_alert)
+- Alert trigger log: `data/alerts/alert_log.parquet` (dedupe state)
+- Entry decisions CSV: `data/paper/entry_log.csv` (from entry_scheduler → entry_loop)
+- Positions: `data/paper/positions.csv`; RT manager close/trim actions: `data/paper/trade_log.csv`
+
+4) End of day (or next morning)
+- Manual daily run (build watchlist → paper step → online updates):
+  ./scripts/daily-run.ps1 -Config engine/config.research.yaml
+
+5) Nightly reflection and parameter tuning
+- Update expected return mapping (k) from decisions vs outcomes:
+  # Review suggested change
+  ./scripts/update-expectation.ps1 -DryRun
+  # Apply update to YAML (risk.expected_k, risk.base_prob)
+  ./scripts/update-expectation.ps1
+- Optional analysis printout (no file writes):
+  python -m engine.tools.calibrate_expectation --features data/datasets/features_daily_1D.parquet --decisions data/paper/entry_log.csv --base-prob 0.5 --lookahead 5 --target-pct 0.01
+
+6) Model training cadence
+- Light daily: keep meta model fixed; rely on step 5 to adapt sizing/expectation.
+- Weekly (recommended): re‑run CV and retrain meta on the latest data window (isotonic + HGB):
+  python -m engine.models.run_cv --features data/datasets/features_daily_1D.parquet --label label_up_1d --cv-scheme time_kfold --kfolds 5 --purge-days 3 --embargo-days 3 --calibration isotonic --out data/datasets/oof_specialists.parquet --calibrators-out data/models/spec_calibrators.pkl
+  python -m engine.models.train_meta --oof data/datasets/oof_specialists.parquet --train-folds all-but-last:1 --test-folds last:1 --model hgb --hgb-learning-rate 0.05 --hgb-max-iter 400 --meta-calibration isotonic --replace-prob-with-calibrated --out data/datasets/meta_predictions.parquet --model-out data/models/meta_hgb.pkl
+
+Notes
+- Tune risk gates in `engine/config.research.yaml` (e.g., `min_adv_usd`, `max_atr_pct`).
+- Real‑time alerts only trigger when the market is open.
+- UI (manual control): `streamlit run ui/app.py`
+- Train weekly (no flags): `./scripts/weekly-train.ps1` (overwrites local YAML with latest paths)

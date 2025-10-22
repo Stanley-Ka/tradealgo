@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Optional
+from functools import lru_cache
 
-import pandas as pd
 import pandas_market_calendars as mcal  # type: ignore
 
 
@@ -24,44 +24,75 @@ class Session:
 
 
 def _now() -> datetime:
-    return datetime.now().astimezone()
+    return datetime.now(timezone.utc)
 
 
+@lru_cache(maxsize=8)
 def get_calendar(code: str = DEFAULT_CAL):
+    """Cached calendar instance for faster repeated queries."""
     return mcal.get_calendar(code)
 
 
-def today_session(calendar_code: str = DEFAULT_CAL, now: Optional[datetime] = None) -> Optional[Session]:
-    now = now or _now()
-    cal = get_calendar(calendar_code)
-    sched = cal.schedule(start_date=now.date(), end_date=now.date())
-    if sched.empty:
-        return None
-    row = sched.iloc[0]
-    return Session(open_ts=row["market_open"].to_pydatetime().astimezone(),
-                   close_ts=row["market_close"].to_pydatetime().astimezone())
+def today_session(
+    calendar_code: str = DEFAULT_CAL, now: Optional[datetime] = None
+) -> Optional[Session]:
+    """Return the trading session that contains 'now' (UTC-based), if any.
 
-
-def next_session(calendar_code: str = DEFAULT_CAL, now: Optional[datetime] = None) -> Optional[Session]:
-    now = now or _now()
+    Times in the returned Session are converted to the local timezone for display.
+    """
+    now_utc = now if now is not None else _now()
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=timezone.utc)
     cal = get_calendar(calendar_code)
-    sched = cal.schedule(start_date=now.date(), end_date=(now + timedelta(days=10)).date())
+    # Span +/- 1 day to handle timezone boundaries
+    sched = cal.schedule(
+        start_date=(now_utc - timedelta(days=1)).date(),
+        end_date=(now_utc + timedelta(days=1)).date(),
+    )
     for _, row in sched.iterrows():
-        op = row["market_open"].to_pydatetime().astimezone()
-        cl = row["market_close"].to_pydatetime().astimezone()
-        if cl > now:
-            return Session(op, cl)
+        op_utc = row["market_open"].to_pydatetime()
+        cl_utc = row["market_close"].to_pydatetime()
+        if op_utc <= now_utc <= cl_utc:
+            return Session(open_ts=op_utc.astimezone(), close_ts=cl_utc.astimezone())
+    return None
+
+
+def next_session(
+    calendar_code: str = DEFAULT_CAL, now: Optional[datetime] = None
+) -> Optional[Session]:
+    now_utc = now if now is not None else _now()
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=timezone.utc)
+    cal = get_calendar(calendar_code)
+    sched = cal.schedule(
+        start_date=now_utc.date(), end_date=(now_utc + timedelta(days=10)).date()
+    )
+    for _, row in sched.iterrows():
+        op_utc = row["market_open"].to_pydatetime()
+        cl_utc = row["market_close"].to_pydatetime()
+        if cl_utc > now_utc:
+            return Session(open_ts=op_utc.astimezone(), close_ts=cl_utc.astimezone())
     return None
 
 
 def is_open(calendar_code: str = DEFAULT_CAL, now: Optional[datetime] = None) -> bool:
-    now = now or _now()
+    now_utc = now if now is not None else _now()
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=timezone.utc)
     cal = get_calendar(calendar_code)
-    return bool(cal.open_at_time(schedule=cal.schedule(start_date=now.date(), end_date=now.date()),
-                                 ts=now))
+    # Span +/- 1 day to ensure 'now' falls into a scheduled window regardless of local timezone
+    sched = cal.schedule(
+        start_date=(now_utc - timedelta(days=1)).date(),
+        end_date=(now_utc + timedelta(days=1)).date(),
+    )
+    if sched.empty:
+        return False
+    try:
+        return bool(cal.open_at_time(sched, now_utc))
+    except Exception:
+        return False
 
 
 def seconds_until(dt: datetime, now: Optional[datetime] = None) -> int:
     now = now or _now()
     return max(0, int((dt - now).total_seconds()))
-

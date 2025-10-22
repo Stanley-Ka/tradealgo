@@ -1,0 +1,92 @@
+name: swing_aggressive
+
+paths:
+  features: D:\\EngineData\datasets\features_daily_polygon.parquet
+  meta_model: D:\\EngineData\\models\\meta_hgb.pkl
+  oof: D:\\EngineData\\datasets\\oof_specialists.parquet
+  calibrators_pkl: D:\\EngineData\\models\\spec_calibrators.pkl
+
+# Provider capabilities (hint for live price/news fallbacks)
+provider:
+  polygon_plan: starter
+
+# Strategy: High-beta swing longs on strong trend continuation.
+# Focus on cheaper names with bigger daily ranges; ride 10/20MA uptrends;
+# accept higher ATR with tighter stops; prefer high momentum and breakouts.
+specialists:
+  news:
+    enhanced: true
+    window_days: 3
+    half_life_days: 1.5
+    provider_weights:
+      polygon: 1.0
+      finnhub: 0.8
+    earnings_tags: ["earnings", "results"]
+  sector:
+    enabled: true
+    # sector_map_csv: engine/data/sector_map.csv
+    mom_col: mom_sma_5_20
+    clip: 2.0
+  regime:
+    enabled: true
+  technicals:
+    mom_x: 0.35       # short-term momentum composite
+    mom20: 0.25       # 20D momentum
+    rsi: 0.10         # light RSI confirm
+    macd: 0.15        # MACD gap
+    bb_guard: 0.05    # avoid extended bands
+    z_guard: 0.10     # price z-score sanity
+  breakout:
+    window: 20        # faster Donchian
+    weight: 0.25
+  flow:
+    window_obv: 20
+    window_mfi: 14
+    weight: 0.15
+  adx:
+    enabled: true
+    window: 14
+    min_adx: 18
+  stoch_rsi:
+    enabled: false
+  williams_r:
+    enabled: false
+  cci:
+    enabled: false
+
+risk:
+  account_equity: 200000
+  take_profit_atr_mult: 2.0
+  trail_atr_mul: 0.7
+  risk_mode: auto
+  min_risk_pct: 0.003
+  max_risk_pct: 0.008
+  risk_curve: quadratic
+  base_prob: 0.50
+  stop_atr_mult: 0.9
+  max_name_weight: 0.12
+  min_adv_usd: 5000000
+  max_atr_pct: 0.12
+
+alert:
+  top_k: 5
+  news_provider: polygon
+  price_source: live
+  live_provider: polygon
+  polygon_plan: starter
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+  universe_file: engine/data/universe/swing_aggressive.watchlist.txt
+  signal_threshold: 0.50
+  min_price: 0.5
+  max_price: 25
+  stop_atr_mult: 1.0
+  take_profit_atr_mult: 0
+  trail_atr_mul: 0
+  min_hold_days: 1
+  max_hold_days: 120
+
+# Trades webhook for entry notifications (used by entry_loop --send-discord)
+paper:
+  discord_webhook: ${DISCORD_TRADES_WEBHOOK_URL}
+
+rebalance: daily

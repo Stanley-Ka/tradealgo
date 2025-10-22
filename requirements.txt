@@ -1,17 +1,14 @@
-pandas
-numpy
-scikit-learn
-xgboost
-statsmodels
-duckdb
-mlflow
-pydantic
-python-dotenv
-requests
-websocket-client
-pandas-market-calendars
-pyarrow
-tqdm
-pyyaml
-# Uncomment when implementing IBKR adapter
-# ib-insync
+pandas>=1.5
+numpy>=1.23
+scikit-learn>=1.2
+requests>=2.31
+tqdm>=4.65
+pyyaml>=6.0
+streamlit>=1.25
+pandas_market_calendars>=4.4
+pyarrow>=12.0
+torch
+transformers>=4.40
+datasets>=2.18
+evaluate>=0.4
+yfinance>=0.2.28

@@ -11,7 +11,9 @@ from .broker_base import Broker
 
 
 class IBKRBroker(Broker):
-    def __init__(self, host: str = "127.0.0.1", port: int = 7497, client_id: int = 1) -> None:
+    def __init__(
+        self, host: str = "127.0.0.1", port: int = 7497, client_id: int = 1
+    ) -> None:
         self.host = host
         self.port = port
         self.client_id = client_id
@@ -35,4 +37,3 @@ class IBKRBroker(Broker):
 
     def cancel_all(self) -> Any:
         return {"status": "ok"}
-

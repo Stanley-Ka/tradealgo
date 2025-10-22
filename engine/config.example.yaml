@@ -1,4 +1,4 @@
-sensitivity:
+specialists:
   # Specialist parameters
   patterns:
     engulfing: 0.5
@@ -10,18 +10,63 @@ sensitivity:
     z_guard: -0.1  # negative means contrarian penalty at extremes
   sequence:
     window: 10
+  breakout:
+    window: 20
+    atr_window: 14
+  flow:
+    obv: 0.6
+    mfi: 0.4
+    window_obv: 20
+    window_mfi: 14
+  adx:
+    enabled: false
+    period: 14
+  stoch_rsi:
+    rsi_period: 14
+    stoch_period: 14
+    smooth_k: 3
+  williams_r:
+    period: 14
+  cci:
+    period: 20
+  # Sector specialist: relative strength within sector or cross-sectional
+  sector:
+    enabled: true
+    # sector_map_csv: engine/data/sector_map.csv   # optional mapping [symbol,sector]
+    mom_col: mom_sma_5_20
+    clip: 2.0
+  # News specialist enhancements
+  news:
+    enhanced: true
+    window_days: 3
+    half_life_days: 1.5
+    provider_weights:
+      polygon: 1.0
+      finnhub: 0.8
+    earnings_tags: ["earnings", "results"]
+    # entity_map_csv: engine/data/entity_map.csv   # optional mapping [entity,symbol]
+
+  # Regime feature flags (merged into specialist output by date)
+  regime:
+    enabled: true
 
 risk:
-  min_adv_usd: 10000000   # 20D average dollar volume
-  max_atr_pct: 0.05       # ATR(14)/price cap
-  earnings_blackout: 2    # +/- days
+  account_equity: 20000              # set your real capital
+  risk_mode: auto                    # or ‘fixed’ if preferred
+  min_risk_pct: 0.002
+  max_risk_pct: 0.006
+  risk_curve: quadratic
+  max_name_weight: 0.10              # 10% notional cap per name
 
 alert:
   top_k: 1
-  news_provider: finnhub
+  price_source: live
+  live_provider: yahoo
+  use_intraday_features: false       # flip to true when you build intraday snapshots
+  news_provider: yahoo
   news_lookback_days: 3
   universe_file: engine/data/universe/nasdaq100.example.txt
-  discord_webhook: ${DISCORD_WEBHOOK_URL}
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
 
 calibration:
   kind: platt
@@ -32,4 +77,4 @@ paths:
   meta_model: data/models/meta_lr.pkl
   oof: data/datasets/oof_specialists.parquet
   news_sentiment: data/datasets/dummy_sentiment.parquet
-
+  intraday_features: data/datasets/features_intraday_latest.parquet

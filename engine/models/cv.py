@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generator, Iterable, List, Tuple
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -88,7 +88,9 @@ def time_kfold_purged(
         # Embargo after validation
         if embargo_days > 0:
             embargo_end = val_end_date + pd.Timedelta(days=embargo_days)
-            tr_mask_sorted &= ~( (s_sorted > val_end_date) & (s_sorted <= embargo_end) ).values
+            tr_mask_sorted &= ~(
+                (s_sorted > val_end_date) & (s_sorted <= embargo_end)
+            ).values
 
         tr_idx_sorted = np.where(tr_mask_sorted)[0]
 

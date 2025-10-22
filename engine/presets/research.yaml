@@ -1,0 +1,47 @@
+paths:
+  features: D:\\EngineData\datasets\features_daily_polygon.parquet
+  oof: data/datasets/oof_specialists.parquet
+  meta_model: data/models/meta_hgb.pkl
+  news_sentiment: data/datasets/sentiment_finbert.parquet
+
+calibration:
+  kind: isotonic
+  calibrators_pkl: data/models/spec_calibrators.pkl
+
+specialists:
+  # Enable gap mean‑reversion and tune sequence + news
+  gap_rev:
+    enabled: true
+    cap_sigma: 2.0
+    atr_floor: 0.005
+    z_weight: 0.2
+  sequence:
+    enabled: true
+    window: 10
+    ret_kind: intraday   # close | intraday | overnight
+  news:
+    enabled: true
+    window_days: 3
+    half_life_days: 1.5
+    agg: mean
+
+alert:
+  top_k: 3
+  min_price: 5
+  max_price: 500
+  news_provider: polygon
+  price_source: live
+  live_provider: polygon
+  polygon_plan: starter
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+
+paper:
+  discord_webhook: ${DISCORD_TRADES_WEBHOOK_URL}
+
+risk:
+  min_adv_usd: 10000000
+  max_atr_pct: 0.05
+  earnings_blackout: 2
+  risk_mode: auto
+  risk_pct: 0.005
+  stop_atr_mult: 1.0

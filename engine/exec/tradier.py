@@ -30,4 +30,3 @@ class TradierBroker(Broker):
 
     def cancel_all(self) -> Any:
         return {"status": "ok"}
-

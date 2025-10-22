@@ -1,0 +1,91 @@
+name: swing_conservative
+
+paths:
+  features: D:\\EngineData\\datasets\\features_daily_1D.parquet
+  meta_model: D:\\EngineData\\models\\meta_hgb.pkl
+  oof: D:\\EngineData\\datasets\\oof_specialists.parquet
+  calibrators_pkl: D:\\EngineData\\models\\spec_calibrators.pkl
+
+# Provider capabilities
+provider:
+  polygon_plan: starter
+
+# Strategy: Quality swing longs in large-cap/mega-cap names.
+# Emphasize trend quality and pullback entries; avoid high-volatility names.
+specialists:
+  news:
+    enhanced: true
+    window_days: 3
+    half_life_days: 1.5
+    provider_weights:
+      polygon: 1.0
+      finnhub: 0.8
+    earnings_tags: ["earnings", "results"]
+  sector:
+    enabled: true
+    # sector_map_csv: engine/data/sector_map.csv
+    mom_col: mom_sma_5_20
+    clip: 2.0
+  regime:
+    enabled: true
+  technicals:
+    mom_x: 0.20
+    mom20: 0.20
+    rsi: 0.20
+    macd: 0.15
+    bb_guard: 0.15
+    z_guard: 0.10
+  breakout:
+    window: 40
+    weight: 0.10
+  flow:
+    window_obv: 40
+    window_mfi: 20
+    weight: 0.10
+  adx:
+    enabled: true
+    window: 14
+    min_adx: 15
+  stoch_rsi:
+    enabled: true
+    rsi_period: 14
+    stoch_period: 14
+    smooth_k: 3
+  williams_r:
+    enabled: true
+    period: 14
+  cci:
+    enabled: false
+
+risk:
+  account_equity: 200000
+  risk_mode: auto
+  min_risk_pct: 0.002
+  max_risk_pct: 0.005
+  risk_curve: linear
+  base_prob: 0.50
+  stop_atr_mult: 1.2
+  max_name_weight: 0.08
+  min_adv_usd: 15000000
+  max_atr_pct: 0.06
+
+alert:
+  top_k: 3
+  news_provider: polygon
+  price_source: live
+  live_provider: polygon
+  polygon_plan: starter
+  discord_webhook: ${DISCORD_ALERTS_WEBHOOK_URL}
+  universe_file: engine/data/universe/swing_conservative.watchlist.txt
+  min_price: 10
+  max_price: 500
+
+rebalance: weekly
+rebal_weekday: MON
+
+# Trades webhook for entry notifications
+paper:
+  discord_webhook: ${DISCORD_TRADES_WEBHOOK_URL}
+  decision_log_csv: data/paper/decision_log.csv
+  specialist_weights_yaml: data/paper/specialist_weights.yaml
+  use_specialist_weights: true

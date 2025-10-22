@@ -18,7 +18,9 @@ class MetaLearner:
 
     weights: Mapping[str, float] | None = None
 
-    def predict_proba(self, p: Mapping[str, float], context: Mapping[str, float] | None = None) -> float:
+    def predict_proba(
+        self, p: Mapping[str, float], context: Mapping[str, float] | None = None
+    ) -> float:
         _ = context
         keys = ["pattern", "technical", "sequence", "nlp", "alt"]
         if self.weights is None:
@@ -29,4 +31,3 @@ class MetaLearner:
         den = sum(w.values()) or 1.0
         y = num / den
         return max(0.0, min(1.0, y))
-

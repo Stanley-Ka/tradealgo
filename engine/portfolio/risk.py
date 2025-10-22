@@ -20,4 +20,3 @@ def is_order_safe(order: OrderIntent, max_spread_bps: float = 50.0) -> bool:
     if order.spread_bps is not None and order.spread_bps > max_spread_bps:
         return False
     return True
-

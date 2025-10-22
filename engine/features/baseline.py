@@ -16,7 +16,15 @@ def compute_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
     Expects columns: date, adj_open, adj_high, adj_low, adj_close, adj_volume.
     Returns a DataFrame with original date/symbol and added feature columns.
     """
-    required = {"date", "symbol", "adj_open", "adj_high", "adj_low", "adj_close", "adj_volume"}
+    required = {
+        "date",
+        "symbol",
+        "adj_open",
+        "adj_high",
+        "adj_low",
+        "adj_close",
+        "adj_volume",
+    }
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns: {sorted(missing)}")
@@ -26,11 +34,16 @@ def compute_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
     high = out["adj_high"]
     low = out["adj_low"]
     volume = out["adj_volume"]
+    open_ = out["adj_open"]
 
     # Returns
     out["ret_1d"] = close.pct_change(1)
     out["ret_5d"] = close.pct_change(5)
     out["ret_20d"] = close.pct_change(20)
+    # Decompose daily move into overnight and intraday components
+    prev_close = close.shift(1)
+    out["ret_overnight"] = _safe_div(open_ - prev_close, prev_close)
+    out["ret_intraday"] = _safe_div(close - open_, open_)
 
     # Moving averages and momentum
     sma5 = close.rolling(5, min_periods=5).mean()
@@ -53,7 +66,6 @@ def compute_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
     out["vol_z_20"] = _safe_div(lv - lv_mean20, lv_std20)
 
     # ATR(14) normalized
-    prev_close = close.shift(1)
     tr1 = high - low
     tr2 = (high - prev_close).abs()
     tr3 = (low - prev_close).abs()
@@ -66,4 +78,3 @@ def compute_baseline_features(df: pd.DataFrame) -> pd.DataFrame:
         out[col] = out[col].clip(-10, 10)
 
     return out
-
