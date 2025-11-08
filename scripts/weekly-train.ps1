@@ -1,11 +1,11 @@
 param(
-  [string]$Features = "D:\\EngineData\\datasets\\features_daily_1D.parquet",
+  [string]$Features = "C:\\EngineData\\datasets\\features_daily_1D.parquet",
   [string]$Preset = "engine/presets/research.yaml",
-  [string]$OOF = "D:\\EngineData\\datasets\\oof_specialists.parquet",
-  [string]$Calibrators = "D:\\EngineData\\models\\spec_calibrators.pkl",
-  [string]$MetaPred = "D:\\EngineData\\datasets\\meta_predictions.parquet",
-  [string]$Model = "D:\\EngineData\\models\\meta_hgb.pkl",
-  [string]$BacktestReport = "D:\\EngineData\\backtests\\daily_topk_report.html",
+  [string]$OOF = "C:\\EngineData\\datasets\\oof_specialists.parquet",
+  [string]$Calibrators = "C:\\EngineData\\models\\spec_calibrators.pkl",
+  [string]$MetaPred = "C:\\EngineData\\datasets\\meta_predictions.parquet",
+  [string]$Model = "C:\\EngineData\\models\\meta_hgb.pkl",
+  [string]$BacktestReport = "C:\\EngineData\\backtests\\daily_topk_report.html",
   [string]$Universe = "engine/data/universe/us_all.txt",
   [string]$Start = "",
   [string]$End = "",
@@ -95,7 +95,7 @@ $params = @{
 
 # Optional: post drift summary to Discord alerts channel if available
 try {
-  $drift = "D:\\EngineData\\reports\\cv_drift.csv"
+  $drift = "C:\\EngineData\\reports\\cv_drift.csv"
   if (Test-Path $drift) {
     $hook = $env:DISCORD_ALERTS_WEBHOOK_URL
     if (-not $hook -or $hook.Trim() -eq "") { $hook = $env:DISCORD_WEBHOOK_URL }

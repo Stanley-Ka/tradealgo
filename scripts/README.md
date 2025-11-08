@@ -50,7 +50,7 @@ Tips
  - For larger universes (e.g., US all), run update-universe.ps1 to refresh the list, then rebuild-polygon.ps1 to rebuild data/features.
 
 Example: Train + backtest on D:\
-- ./scripts/weekly-train.ps1 -Features "D:\\EngineData\\datasets\\features_daily_1D.parquet" -Preset engine/presets/research.yaml -OOF "D:\\EngineData\\datasets\\oof_specialists.parquet" -Calibrators "D:\\EngineData\\models\\spec_calibrators.pkl" -MetaPred "D:\\EngineData\\datasets\\meta_predictions.parquet" -Model "D:\\EngineData\\models\\meta_hgb.pkl" -BacktestReport "D:\\EngineData\\backtests\\daily_topk_report.html" -BuildWatchlist -WatchlistOut engine/data/universe/watchlist.txt -WLTopK 500 -RunAlert -DryRun
+- ./scripts/weekly-train.ps1 -Features "C:\\EngineData\\datasets\\features_daily_1D.parquet" -Preset engine/presets/research.yaml -OOF "C:\\EngineData\\datasets\\oof_specialists.parquet" -Calibrators "C:\\EngineData\\models\\spec_calibrators.pkl" -MetaPred "C:\\EngineData\\datasets\\meta_predictions.parquet" -Model "C:\\EngineData\\models\\meta_hgb.pkl" -BacktestReport "C:\\EngineData\\backtests\\daily_topk_report.html" -BuildWatchlist -WatchlistOut engine/data/universe/watchlist.txt -WLTopK 500 -RunAlert -DryRun
 
 Routine vs specific
 - Routine: `pre-market.ps1` before open, `daily-run.ps1` after close (daily).

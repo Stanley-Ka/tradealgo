@@ -1,6 +1,6 @@
 param(
   [string]$SettingsPath = "engine/settings.toml",
-  [string]$StorageRoot = "D:\\EngineData"
+  [string]$StorageRoot = "C:\\EngineData"
 )
 
 if (-not (Test-Path $SettingsPath)) {

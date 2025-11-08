@@ -1,5 +1,5 @@
 param(
-  [string]$Features = "D:\\EngineData\\datasets\\features_daily_1D.parquet",
+  [string]$Features = "C:\\EngineData\\datasets\\features_daily_1D.parquet",
   [string]$Decisions = "data/paper/entry_log.csv",
   [string]$Date = "",
   [int]$Lookahead = 5,

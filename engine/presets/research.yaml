@@ -1,5 +1,5 @@
 paths:
-  features: D:\\EngineData\datasets\features_daily_polygon.parquet
+  features: C:\\EngineData\datasets\features_daily_polygon.parquet
   oof: data/datasets/oof_specialists.parquet
   meta_model: data/models/meta_hgb.pkl
   news_sentiment: data/datasets/sentiment_finbert.parquet

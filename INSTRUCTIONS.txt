@@ -7,7 +7,7 @@ Use this guide when you just want to run the engine without digging through the 
 ---------------------------
 - Install dependencies inside the venv: `python -m venv .venv && .\.venv\Scripts\activate && pip install -r requirements.txt`.
 - Create `scripts/api.env` with your keys (`POLYGON_API_KEY`, `DISCORD_ALERTS_WEBHOOK_URL`, `DISCORD_TRADES_WEBHOOK_URL`, `FINNHUB_API_KEY`). Scripts auto-load it.
-- Point heavy datasets at your storage drive via `engine/settings.toml`, for example `storage_root = "D:\\EngineData"`.
+- Point heavy datasets at your storage drive via `engine/settings.toml`, for example `storage_root = "C:\EngineData"`.
 - Copy any preset in `engine/presets/` to `*.local.yaml` when you need site-specific overrides; scripts prefer the `.local` automatically.
 
 1. Daily (Off-Market)
@@ -29,12 +29,12 @@ Run these after the previous session closes. They keep data, models, and diagnos
 3) Backtest the freshly trained predictions (recommended)
    - Command:
      ```
-     python -m engine.backtest.simple_daily --features D:\\EngineData\\datasets\\features_daily_1D.parquet --pred D:\\EngineData\\datasets\\meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 --rebalance weekly --rebal-weekday MON --decision-log-csv D:\\EngineData\\backtests\\decision_log.csv --trade-learning-csv D:\\EngineData\\backtests\\trade_learning.csv --report-html D:\\EngineData\\backtests\\daily_topk_report.html
+     python -m engine.backtest.simple_daily --features C:\\EngineData\\datasets\\features_daily_1D.parquet --pred C:\\EngineData\\datasets\\meta_predictions.parquet --prob-col meta_prob --top-k 20 --cost-bps 5 --rebalance weekly --rebal-weekday MON --decision-log-csv C:\\EngineData\\backtests\\decision_log.csv --trade-learning-csv C:\\EngineData\\backtests\\trade_learning.csv --report-html C:\\EngineData\\backtests\\daily_topk_report.html
      ```
    - Inspect `data/backtests/daily_topk_report.html` (or the report path you set) for drawdown/turnover sanity.
 
 4) Auto-train calibrator and specialist weights (recommended once logs are >200 rows)
-   - Command: `python -m engine.tools.auto_train_from_log --entry-log data/paper/decision_log.csv --log D:\\EngineData\\backtests\\decision_log.csv --min-rows 200 --lookahead-col ret_3d --dedupe --calibrator-out data/models/meta_calibrator.auto.pkl --weights-out data/models/specialist_condition_weights.json`
+   - Command: `python -m engine.tools.auto_train_from_log --entry-log data/paper/decision_log.csv --log C:\\EngineData\\backtests\\decision_log.csv --min-rows 200 --lookahead-col ret_3d --dedupe --calibrator-out data/models/meta_calibrator.auto.pkl --weights-out data/models/specialist_condition_weights.json`
    - If you only want backtest data, add `--skip-entry-log`; add more `--log PATH` arguments for replay sets.
 
 5) Run the lightweight online upgrade (optional)
@@ -64,7 +64,7 @@ These steps cover pre-open prep, live monitoring, and post-close tasks on tradin
 2) Launch real-time stack (recommended when you want unattended alerts/entries)
    - Suggested command:
      ```
-./scripts/overnight.ps1 -Config engine/presets/swing_aggressive.yaml -Universe engine/data/universe/watchlist.txt -Features D:\EngineData\datasets\features_daily_1D.parquet -Model D:\EngineData\models\meta_hgb.pkl -AlertEvery 5 -AlertPoll 15 -EntryTimes "15:55" -EntryTopK 5 -EntryPoll 5 -StartIntraday -IntradayFeatures data/datasets/features_intraday_latest.parquet -MixIntraday -MixWeight 0.3 -InitialWatchlistThreshold 0.55 -StartManager -MinAdvUsd 10000000
+./scripts/overnight.ps1 -Config engine/presets/swing_aggressive.yaml -Universe engine/data/universe/watchlist.txt -Features C:\EngineData\datasets\features_daily_1D.parquet -Model C:\EngineData\models\meta_hgb.pkl -AlertEvery 5 -AlertPoll 15 -EntryTimes "15:55" -EntryTopK 5 -EntryPoll 5 -StartIntraday -IntradayFeatures data/datasets/features_intraday_latest.parquet -MixIntraday -MixWeight 0.3 -InitialWatchlistThreshold 0.55 -StartManager -MinAdvUsd 10000000
      ```
    - Adjust `-SignalThreshold` as desired; include `-AutoTrain` if you want the online helper to run once at startup.
 
@@ -124,7 +124,7 @@ Longer jobs meant for a weekly cadence; kick them off when you can let the machi
 6) End-to-end automation rehearsal (optional)
    - Command:
      ```
-     ./scripts/full-automation.ps1 -DataProvider polygon -Universe engine/data/universe/us_all.txt -Features D:\\EngineData\\datasets\\features_daily_polygon.parquet -OOF D:\\EngineData\\datasets\\oof_specialists.parquet -Calibrators D:\\EngineData\\models\\spec_calibrators.pkl -Model D:\\EngineData\\models\\meta_hgb.pkl -MaxPerMinute 0 -RunTraining
+     ./scripts/full-automation.ps1 -DataProvider polygon -Universe engine/data/universe/us_all.txt -Features C:\\EngineData\\datasets\\features_daily_polygon.parquet -OOF C:\\EngineData\\datasets\\oof_specialists.parquet -Calibrators C:\\EngineData\\models\\spec_calibrators.pkl -Model C:\\EngineData\\models\\meta_hgb.pkl -MaxPerMinute 0 -RunTraining
      ```
    - Useful for sanity checking that every module can run unattended with your presets.
 
@@ -135,7 +135,7 @@ Longer jobs meant for a weekly cadence; kick them off when you can let the machi
 
 8) Build swing training dataset (for NN training later)
    - Command:
-     `python -m engine.tools.build_swing_dataset --features D:\\EngineData\\datasets\\features_daily_1D.parquet --model-pkl D:\\EngineData\\models\\meta_hgb.pkl --universe-file engine/data/universe/swing_aggressive.watchlist.txt --timeframes 3,7,14 --entry-price close --top-k 20 --start 2017-01-01 --out D:\\EngineData\\datasets\\swing_training_dataset.parquet --resume --require-all-horizons`
+     `python -m engine.tools.build_swing_dataset --features C:\\EngineData\\datasets\\features_daily_1D.parquet --model-pkl C:\\EngineData\\models\\meta_hgb.pkl --universe-file engine/data/universe/swing_aggressive.watchlist.txt --timeframes 3,7,14 --entry-price close --top-k 20 --start 2017-01-01 --out C:\\EngineData\\datasets\\swing_training_dataset.parquet --resume --require-all-horizons`
    - Produces rows with meta/specialist probabilities, ADV/ATR context, and labels ret_/label_up_3d/7d/14d for supervised learning.
 
 
@@ -165,7 +165,7 @@ pick before the open and enter at the open, or pick before the close and enter a
   - Let the scheduler trigger the entry loop automatically, sized using daily features but executed just before the close:
     python -m engine.tools.entry_scheduler \
       --config engine/presets/swing_aggressive.local.yaml \
-      --features D:\\EngineData\\datasets\\features_daily_1D.parquet \
+      --features C:\\EngineData\\datasets\\features_daily_1D.parquet \
       --model-pkl data/models/meta_lr.pkl \
       --universe-file engine/data/universe/swing_aggressive.watchlist.txt \
       --times 15:55 \
@@ -174,7 +174,7 @@ pick before the open and enter at the open, or pick before the close and enter a
 
 - Paper-trading daily carry (evaluation)
   - To evaluate overnight carry with top‑K equal‑weight portfolio steps:
-    python -m engine.tools.paper_trader --features D:\\EngineData\\datasets\\features_daily_1D.parquet \
+    python -m engine.tools.paper_trader --features C:\\EngineData\\datasets\\features_daily_1D.parquet \
       --universe-file engine/data/universe/swing_aggressive.watchlist.txt \
       --model-pkl data/models/meta_lr.pkl --top-k 20 --cost-bps 5 --turnover-cap 0.5
 

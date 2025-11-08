@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Weekly overview summarizing trades, specialist performance, and best combos.
 
 Inputs:
@@ -19,6 +17,8 @@ Dynamic weights:
 - Weights are proportional to smoothed win rates per specialist over the evaluated set.
   weight_k ~ (wins_k + alpha) / (attempts_k + 2*alpha), then normalized to sum to 1.
 """
+
+from __future__ import annotations
 
 import argparse
 import itertools
@@ -52,7 +52,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     # Optional drift/calibration reports
     p.add_argument(
-        "--cv-drift-csv", type=str, default="D:\\EngineData\\reports\\cv_drift.csv"
+        "--cv-drift-csv", type=str, default="C:\\EngineData\\reports\\cv_drift.csv"
     )
     p.add_argument(
         "--calib-monitor-csv", type=str, default="data/reports/calibration_monitor.csv"

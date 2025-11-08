@@ -37,7 +37,7 @@ if ($env:VIRTUAL_ENV -and (Test-Path (Join-Path $env:VIRTUAL_ENV "Scripts\python
 }
 
 Write-Host "[train] Cross-validating specialists (isotonic, purged time-kfold + drift report)..."
-$drift = "D:\\EngineData\\reports\\cv_drift.csv"
+$drift = "C:\\EngineData\\reports\\cv_drift.csv"
 $cvArgs = @("-m","engine.models.run_cv","--features",$Features,"--label","label_up_1d","--cv-scheme","time_kfold","--kfolds","5","--purge-days","3","--embargo-days","3","--calibration","isotonic","--out",$OOF,"--calibrators-out",$Calibrators,"--spec-config",$Config,"--drift-report",$drift)
 if ($Start -and $Start.Trim() -ne "") { $cvArgs += @("--start", $Start) }
 if ($End -and $End.Trim() -ne "") { $cvArgs += @("--end", $End) }

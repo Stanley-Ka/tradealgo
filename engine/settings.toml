@@ -5,7 +5,7 @@ timezone = "US/Eastern"
 
 [data]
 # storage_root is where Parquet and caches live; keep this out of git
-storage_root = "D:\\EngineData"
+storage_root = "C:\EngineData"
 universe = "sp500"       # or custom list
 bar_size = "1D"          # 1D | 240min | 60min
 

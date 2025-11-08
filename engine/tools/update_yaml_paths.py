@@ -1,21 +1,21 @@
-from __future__ import annotations
-
 """Update YAML config paths (features, models, oof, calibrators, outputs).
 
 Usage:
   python -m engine.tools.update_yaml_paths \
     --in engine/presets/swing_aggressive.yaml \
     --out engine/presets/swing_aggressive.local.yaml \
-    --features D:\\EngineData\\datasets\\features_daily_1D.parquet \
-    --meta-model D:\\EngineData\\models\\meta_lr.pkl \
-    --oof D:\\EngineData\\datasets\\oof_specialists.parquet \
-    --calibrators D:\\EngineData\\models\\spec_calibrators.pkl \
-    --meta D:\\EngineData\\datasets\\meta_predictions.parquet \
-    --sentiment D:\\EngineData\\datasets\\sentiment_finbert.parquet \
-    --picks D:\\EngineData\\signals\\picks.csv \
+    --features C:\\EngineData\\datasets\\features_daily_1D.parquet \
+    --meta-model C:\\EngineData\\models\\meta_lr.pkl \
+    --oof C:\\EngineData\\datasets\\oof_specialists.parquet \
+    --calibrators C:\\EngineData\\models\\spec_calibrators.pkl \
+    --meta C:\\EngineData\\datasets\\meta_predictions.parquet \
+    --sentiment C:\\EngineData\\datasets\\sentiment_finbert.parquet \
+    --picks C:\\EngineData\\signals\\picks.csv \
     --universe engine/data/universe/us_all.txt \
-    --meta-calibrator D:\\EngineData\\models\\meta_calibrator.pkl
+    --meta-calibrator C:\\EngineData\\models\\meta_calibrator.pkl
 """
+
+from __future__ import annotations
 
 import argparse
 from typing import Optional

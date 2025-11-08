@@ -1,9 +1,9 @@
 param(
-  [string]$Features = "D:\\EngineData\\datasets\\features_daily_1D.parquet",
-  [string]$Model = "D:\\EngineData\\models\\meta_hgb.pkl",
+  [string]$Features = "C:\\EngineData\\datasets\\features_daily_1D.parquet",
+  [string]$Model = "C:\\EngineData\\models\\meta_hgb.pkl",
   [string]$Config = "engine/presets/research.yaml",
   [string]$Universe = "engine/data/universe/us_all.txt",
-  [string]$Calibrators = "D:\\EngineData\\models\\spec_calibrators.pkl",
+  [string]$Calibrators = "C:\\EngineData\\models\\spec_calibrators.pkl",
   [int]$TopK = 5,
   [double]$MinPrice = 5,
   [double]$MinADV = 10000000,

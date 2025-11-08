@@ -1,5 +1,5 @@
 param(
-  [string]$Features = "D:\\EngineData\\datasets\\features_daily_1D.parquet",
+  [string]$Features = "C:\\EngineData\\datasets\\features_daily_1D.parquet",
   [string]$Start = "2017-01-01",
   [string]$End = "",
   [ValidateSet('monthly','quarterly')][string]$Freq = 'quarterly',
@@ -10,9 +10,9 @@ param(
   [double]$SpreadK = 1e8,
   [double]$SpreadCapBps = 25.0,
   [double]$SpreadMinBps = 2.0,
-  [string]$OutDir = "D:\\EngineData\\backtests\\walkforward",
-  [string]$ReportsDir = "D:\\EngineData\\reports",
-  [string]$OOFPath = "D:\\EngineData\\datasets\\oof_specialists.parquet"
+  [string]$OutDir = "C:\\EngineData\\backtests\\walkforward",
+  [string]$ReportsDir = "C:\\EngineData\\reports",
+  [string]$OOFPath = "C:\\EngineData\\datasets\\oof_specialists.parquet"
 )
 
 $ErrorActionPreference = 'Stop'

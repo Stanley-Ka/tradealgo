@@ -3,13 +3,13 @@ param(
   [string]$OutPreset = "engine/presets/swing_aggressive.local.yaml"
 )
 
-$features = "D:\\EngineData\\datasets\\features_daily_1D.parquet"
-$oof = "D:\\EngineData\\datasets\\oof_specialists.parquet"
-$cal = "D:\\EngineData\\models\\spec_calibrators.pkl"
-$meta = "D:\\EngineData\\datasets\\meta_predictions.parquet"
-$model = "D:\\EngineData\\models\\meta_hgb.pkl"
-$metaCal = "D:\\EngineData\\models\\meta_calibrator.pkl"
-$bt = "D:\\EngineData\\backtests\\daily_topk_report.html"
+$features = "C:\\EngineData\\datasets\\features_daily_1D.parquet"
+$oof = "C:\\EngineData\\datasets\\oof_specialists.parquet"
+$cal = "C:\\EngineData\\models\\spec_calibrators.pkl"
+$meta = "C:\\EngineData\\datasets\\meta_predictions.parquet"
+$model = "C:\\EngineData\\models\\meta_hgb.pkl"
+$metaCal = "C:\\EngineData\\models\\meta_calibrator.pkl"
+$bt = "C:\\EngineData\\backtests\\daily_topk_report.html"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $repoRoot = Resolve-Path (Join-Path $scriptDir '..')

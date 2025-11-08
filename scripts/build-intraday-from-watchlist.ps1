@@ -1,9 +1,9 @@
 param(
   [string]$Watchlist = "engine/data/universe/watchlist.txt",
-  [string]$BarsRoot = "D:\\EngineData\\equities\\polygon",
+  [string]$BarsRoot = "C:\\EngineData\\equities\\polygon",
   [string]$Interval = "1m",
   [int]$LookbackBars = 200,
-  [string]$SnapshotOut = "D:\\EngineData\\datasets\\features_intraday_latest.parquet"
+  [string]$SnapshotOut = "C:\\EngineData\\datasets\\features_intraday_latest.parquet"
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition

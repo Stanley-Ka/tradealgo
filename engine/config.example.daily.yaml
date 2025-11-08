@@ -1,6 +1,6 @@
 paths:
   # Point features to the Polygon-built features parquet (see scripts/rebuild-polygon.ps1)
-  features: D:\EngineData\datasets\features_daily_1D.parquet
+  features: C:\EngineData\datasets\features_daily_1D.parquet
   meta_model: data/models/meta_lr.pkl
   calibrators_pkl: data/models/spec_calibrators.pkl
   sentiment_out: data/datasets/sentiment_finbert.parquet

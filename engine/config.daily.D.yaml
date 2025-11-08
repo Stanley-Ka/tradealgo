@@ -1,10 +1,10 @@
 paths:
   # Polygon-built features parquet on D: (adjust to your chosen data root)
-  features: "D:\\EngineData\\datasets\\features_daily_1D.parquet"
+  features: "C:\\EngineData\\datasets\\features_daily_1D.parquet"
   # Optional: intraday snapshot parquet (if you generate it)
-  # intraday_features: "D:\\EngineData\\datasets\\features_intraday_latest.parquet"
-  sentiment_out: "D:\\EngineData\\datasets\\sentiment_finbert.parquet"
-  picks_csv: "D:\\EngineData\\signals\\picks.csv"
+  # intraday_features: "C:\\EngineData\\datasets\\features_intraday_latest.parquet"
+  sentiment_out: "C:\\EngineData\\datasets\\sentiment_finbert.parquet"
+  picks_csv: "C:\\EngineData\\signals\\picks.csv"
 
 finbert:
   # Keep using your preferred universe file

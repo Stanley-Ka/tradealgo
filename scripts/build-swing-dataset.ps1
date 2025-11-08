@@ -1,8 +1,8 @@
 param(
-  [string]$Features = "D:\\EngineData\\datasets\\features_daily_1D.parquet",
-  [string]$Model = "D:\\EngineData\\models\\meta_hgb.pkl",
+  [string]$Features = "C:\\EngineData\\datasets\\features_daily_1D.parquet",
+  [string]$Model = "C:\\EngineData\\models\\meta_hgb.pkl",
   [string]$Universe = "engine/data/universe/swing_aggressive.watchlist.txt",
-  [string]$Out = "D:\\EngineData\\datasets\\swing_training_dataset.parquet",
+  [string]$Out = "C:\\EngineData\\datasets\\swing_training_dataset.parquet",
   [string]$Timeframes = "3,7,14",
   [ValidateSet('close','open')][string]$EntryPrice = 'close',
   [int]$TopK = 20,

@@ -1,13 +1,13 @@
 param(
   # Walk-forward params
-  [string]$Features = "D:\\EngineData\\datasets\\features_daily_1D.parquet",
+  [string]$Features = "C:\\EngineData\\datasets\\features_daily_1D.parquet",
   [string]$Start = "2017-01-01",
   [string]$End = "",
   [ValidateSet('monthly','quarterly')][string]$Freq = 'quarterly',
   # Dataset params
-  [string]$Model = "D:\\EngineData\\models\\meta_hgb.pkl",
+  [string]$Model = "C:\\EngineData\\models\\meta_hgb.pkl",
   [string]$Universe = "engine/data/universe/swing_aggressive.watchlist.txt",
-  [string]$OutDataset = "D:\\EngineData\\datasets\\swing_training_dataset.parquet",
+  [string]$OutDataset = "C:\\EngineData\\datasets\\swing_training_dataset.parquet",
   [string]$Timeframes = "3,7,14",
   [ValidateSet('close','open')][string]$EntryPrice = 'close',
   [int]$TopK = 20,
@@ -16,8 +16,8 @@ param(
   [double]$TP = 0.02,
   [double]$SL = 0.03,
   # Outputs
-  [string]$OutDir = "D:\\EngineData\\backtests\\walkforward",
-  [string]$ReportsDir = "D:\\EngineData\\reports"
+  [string]$OutDir = "C:\\EngineData\\backtests\\walkforward",
+  [string]$ReportsDir = "C:\\EngineData\\reports"
 )
 
 $ErrorActionPreference = 'Stop'

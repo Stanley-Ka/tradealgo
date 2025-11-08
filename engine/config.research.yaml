@@ -74,12 +74,12 @@ alert:
 
 calibration:
   kind: platt
-  calibrators_pkl: D:\\EngineData\\models\\spec_calibrators.pkl
+  calibrators_pkl: C:\\EngineData\\models\\spec_calibrators.pkl
 
 paths:
-  features: D:\\EngineData\datasets\features_daily_polygon.parquet
-  meta_model: D:\\EngineData\\models\\meta_hgb.pkl
-  oof: D:\\EngineData\\datasets\\oof_specialists.parquet
+  features: C:\\EngineData\datasets\features_daily_polygon.parquet
+  meta_model: C:\\EngineData\\models\\meta_hgb.pkl
+  oof: C:\\EngineData\\datasets\\oof_specialists.parquet
   news_sentiment: data/datasets/sentiment_finbert.parquet
 
 # Optional paper-trading section for webhook overrides
